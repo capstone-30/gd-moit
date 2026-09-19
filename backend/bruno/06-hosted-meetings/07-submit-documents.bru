@@ -1,0 +1,40 @@
+meta {
+  name: Submit documents
+  type: http
+  seq: 7
+}
+
+patch {
+  url: {{baseUrl}}/hosted-meetings/{{hostedMeetingId}}/documents/me
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "content": "학습 내용을 공유했습니다.",
+    "outcome": "다음 활동 계획을 정했습니다."
+  }
+}
+
+script:pre-request {
+  if (bru.getVar("documentsEtag")) {
+    req.setHeader("If-Match", bru.getVar("documentsEtag"));
+  }
+}
+
+script:post-response {
+  if (res.getStatus() >= 200 && res.getStatus() < 300) {
+    const data = res.getBody().data;
+    bru.setVar("hostedMeetingEtag", data.etag);
+    bru.setVar("documentsEtag", data.myDocuments ? data.myDocuments.etag : "");
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  배정 학생으로 활동일 이후 실행한다. 최초 제출에는 If-Match를 보내지 않는다.
+}

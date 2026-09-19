@@ -1,0 +1,19 @@
+meta {
+  name: Block user
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/me/blocks/{{userId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {}
+}
+
+assert {
+  res.status: eq 200
+}

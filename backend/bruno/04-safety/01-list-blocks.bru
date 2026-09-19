@@ -1,0 +1,15 @@
+meta {
+  name: List blocks
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/me/blocks?limit=20
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}

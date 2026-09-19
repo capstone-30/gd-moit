@@ -1,0 +1,23 @@
+meta {
+  name: Save availability
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/me/availability/{{termId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "slots": [
+      {{slot}}
+    ]
+  }
+}
+
+assert {
+  res.status: eq 200
+}

@@ -1,0 +1,23 @@
+meta {
+  name: Hosted meeting detail
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/hosted-meetings/{{hostedMeetingId}}
+  body: none
+  auth: none
+}
+
+script:post-response {
+  if (res.getStatus() >= 200 && res.getStatus() < 300) {
+    const data = res.getBody().data;
+    bru.setVar("hostedMeetingEtag", data.etag);
+    bru.setVar("documentsEtag", data.myDocuments ? data.myDocuments.etag : "");
+  }
+}
+
+assert {
+  res.status: eq 200
+}

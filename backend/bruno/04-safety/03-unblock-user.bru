@@ -1,0 +1,16 @@
+meta {
+  name: Unblock user
+  type: http
+  seq: 3
+}
+
+delete {
+  url: {{baseUrl}}/me/blocks/{{userId}}
+  body: none
+  auth: none
+}
+
+
+assert {
+  res.status: eq 204
+}

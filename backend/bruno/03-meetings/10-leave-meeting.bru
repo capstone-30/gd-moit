@@ -1,0 +1,16 @@
+meta {
+  name: Leave meeting
+  type: http
+  seq: 10
+}
+
+delete {
+  url: {{baseUrl}}/meetings/{{meetingId}}/members/me
+  body: none
+  auth: none
+}
+
+
+assert {
+  res.status: eq 204
+}

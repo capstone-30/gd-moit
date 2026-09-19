@@ -1,0 +1,19 @@
+meta {
+  name: Download expenses
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/hosted-meetings/{{hostedMeetingId}}/documents/{{userId}}/expenses.csv
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  담당자로 제출 학생의 userId를 지정한다.
+}

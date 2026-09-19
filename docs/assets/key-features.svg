@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="452" viewBox="0 0 1280 452" role="img" aria-labelledby="title desc">
+  <title id="title">모잇 핵심 기능</title>
+  <desc id="desc">모잇의 핵심 기능. 학교 이메일로 인증하고 유형별로 소규모 모임을 탐색·개설·참여한다. 학기 가능 시간의 교집합으로 일정을 확정하거나 대안을 전원 수락하며 코멘트와 회고 글을 공유한다. 대학 담당자는 프로젝트·모임·공지를 관리하고 학생은 활동 보고서와 활동비 사용 내역을 제출한다. 담당자는 제출 현황과 CSV를 확인한다. 기관 통계는 합성 데이터 시연이다.</desc>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; fill: #1A2028; }
+    .heading { font-size: 27px; font-weight: 700; }
+    .subtitle { font-size: 19px; fill: #525862; }
+    .body { font-size: 19px; }
+    .label { font-size: 18px; font-weight: 700; fill: #2D56B6; }
+    .role { font-size: 17px; font-weight: 700; fill: #2D56B6; }
+    .icon { fill: none; stroke: #2D56B6; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  </style>
+  <rect width="1280" height="452" rx="16" fill="#F1F4F8"/>
+  <g transform="translate(24 24)">
+    <rect width="400" height="404" rx="14" fill="#FFFFFF" stroke="#DBDEE3"/>
+    <rect x="24" y="24" width="64" height="64" rx="16" fill="#E7EDF9"/>
+    <g class="icon" transform="translate(32 32)" aria-hidden="true"><circle cx="18" cy="14" r="7"/><path d="M5 42v-6a13 13 0 0 1 26 0v6M32 8a7 7 0 0 1 0 14M36 28a12 12 0 0 1 7 11v3"/></g>
+    <text x="104" y="63" class="label">01 | 소규모 모임</text>
+    <text x="24" y="132" class="heading">함께할 모임 찾기</text>
+    <text x="24" y="164" class="subtitle">모각공 · 커피챗 · 런치챗 · 회고</text>
+    <path d="M24 190H376" stroke="#DBDEE3"/>
+    <text x="24" y="226" class="role">학생</text>
+    <text x="24" y="257" class="body">학교 이메일 인증 · 유형별 탐색</text>
+    <text x="24" y="315" class="role">개설 · 참여</text>
+    <text x="24" y="346" class="body">2~4명 모임 · 정원 내 즉시 참여</text>
+  </g>
+  <g transform="translate(440 24)">
+    <rect width="400" height="404" rx="14" fill="#FFFFFF" stroke="#DBDEE3"/>
+    <rect x="24" y="24" width="64" height="64" rx="16" fill="#E7EDF9"/>
+    <g class="icon" transform="translate(32 32)" aria-hidden="true"><rect x="5" y="9" width="38" height="34" rx="5"/><path d="M14 4v10M34 4v10M5 21h38M15 32l6 6 12-12"/></g>
+    <text x="104" y="63" class="label">02 | 일정 조율·교류</text>
+    <text x="24" y="132" class="heading">함께할 시간 맞추기</text>
+    <text x="24" y="164" class="subtitle">학기 가능 시간을 등록하고 재사용</text>
+    <path d="M24 190H376" stroke="#DBDEE3"/>
+    <text x="24" y="226" class="role">일정 확정</text>
+    <text x="24" y="257" class="body">교집합 확인 · 대안 제안·전원 수락</text>
+    <text x="24" y="315" class="role">참여자 전용 소통</text>
+    <text x="24" y="346" class="body">코멘트로 연락 · 회고 글 공유</text>
+  </g>
+  <g transform="translate(856 24)">
+    <rect width="400" height="404" rx="14" fill="#FFFFFF" stroke="#DBDEE3"/>
+    <rect x="24" y="24" width="64" height="64" rx="16" fill="#E7EDF9"/>
+    <g class="icon" transform="translate(32 32)" aria-hidden="true"><path d="M12 5h18l8 8v30H12ZM30 5v10h8M19 23h12M19 30h12M19 37h8"/></g>
+    <text x="104" y="63" class="label">03 | 대학 주관 활동</text>
+    <text x="24" y="132" class="heading">활동을 기록하고 관리</text>
+    <text x="24" y="164" class="subtitle">프로젝트별 모임 배정 · 공지 전달</text>
+    <path d="M24 190H376" stroke="#DBDEE3"/>
+    <text x="24" y="226" class="role">학생</text>
+    <text x="24" y="257" class="body">활동 보고서 · 활동비 내역 제출</text>
+    <text x="24" y="315" class="role">대학 담당자</text>
+    <text x="24" y="346" class="body">제출 현황 확인 · 서류 CSV 다운로드</text>
+  </g>
+</svg>

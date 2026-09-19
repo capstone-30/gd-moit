@@ -1,0 +1,16 @@
+meta {
+  name: Delete project
+  type: http
+  seq: 10
+}
+
+delete {
+  url: {{baseUrl}}/hosted-projects/{{projectId}}
+  body: none
+  auth: none
+}
+
+
+assert {
+  res.status: eq 204
+}

@@ -1,0 +1,19 @@
+meta {
+  name: Join meeting
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/meetings/{{meetingId}}/members/me
+  body: json
+  auth: none
+}
+
+body:json {
+  {}
+}
+
+assert {
+  res.status: eq 200
+}

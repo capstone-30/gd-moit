@@ -1,0 +1,9 @@
+headers {
+  Origin: {{origin}}
+}
+
+script:pre-request {
+  if (req.getMethod() !== "GET") {
+    req.setHeader("X-CSRF-Token", bru.getVar("csrfToken") || "");
+  }
+}

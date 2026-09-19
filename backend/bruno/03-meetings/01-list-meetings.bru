@@ -1,0 +1,15 @@
+meta {
+  name: List meetings
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/meetings?membership=all&limit=20
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}

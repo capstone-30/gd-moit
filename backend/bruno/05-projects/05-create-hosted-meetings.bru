@@ -1,0 +1,35 @@
+meta {
+  name: Create hosted meetings
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/hosted-projects/{{projectId}}/meetings
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "meetings": [
+      {
+        "title": "Bruno 주관 모임",
+        "studentEmails": [
+          "{{studentEmail}}",
+          "{{student2Email}}"
+        ]
+      }
+    ]
+  }
+}
+
+script:post-response {
+  if (res.getStatus() >= 200 && res.getStatus() < 300) {
+    bru.setVar("hostedMeetingId", res.getBody().data.meetings[0].id);
+  }
+}
+
+assert {
+  res.status: eq 201
+}

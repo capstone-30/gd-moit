@@ -1,0 +1,23 @@
+meta {
+  name: Meeting detail
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/meetings/{{meetingId}}
+  body: none
+  auth: none
+}
+
+script:post-response {
+  if (res.getStatus() >= 200 && res.getStatus() < 300) {
+    const data = res.getBody().data;
+    bru.setVar("meetingId", data.id);
+    bru.setVar("meetingEtag", res.getHeader("etag"));
+  }
+}
+
+assert {
+  res.status: eq 200
+}

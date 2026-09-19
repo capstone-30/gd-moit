@@ -1,0 +1,19 @@
+meta {
+  name: Download activity
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/hosted-meetings/{{hostedMeetingId}}/documents/{{userId}}/activity.csv
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  담당자로 제출 학생의 userId를 지정한다.
+}

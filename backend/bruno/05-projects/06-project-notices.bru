@@ -1,0 +1,19 @@
+meta {
+  name: Project notices
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/hosted-projects/{{projectId}}/notices?limit=20
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  수정·삭제할 공지의 id와 version을 noticeId·noticeVersion에 입력한다.
+}

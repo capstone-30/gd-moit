@@ -1,0 +1,21 @@
+meta {
+  name: Add comment
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/meetings/{{meetingId}}/comments
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "body": "Bruno에서 작성한 코멘트입니다."
+  }
+}
+
+assert {
+  res.status: eq 201
+}

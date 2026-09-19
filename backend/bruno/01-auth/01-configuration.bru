@@ -1,0 +1,27 @@
+meta {
+  name: Configuration
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/configuration
+  body: none
+  auth: none
+}
+
+script:post-response {
+  if (res.getStatus() >= 200 && res.getStatus() < 300) {
+    const data = res.getBody().data;
+    if (data.privacyVersion) bru.setVar("privacyVersion", data.privacyVersion);
+    if (data.term) {
+      bru.setVar("termId", data.term.id);
+      if (data.term.slots.length) bru.setVar("slot", data.term.slots[0].slot);
+    }
+    if (data.places.length) bru.setVar("placeId", data.places[0].id);
+  }
+}
+
+assert {
+  res.status: eq 200
+}

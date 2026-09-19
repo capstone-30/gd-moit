@@ -1,0 +1,22 @@
+meta {
+  name: Delete account
+  type: http
+  seq: 2
+}
+
+delete {
+  url: {{baseUrl}}/me
+  body: none
+  auth: none
+}
+
+
+script:post-response {
+  if (res.getStatus() >= 200 && res.getStatus() < 300) {
+    bru.setVar("csrfToken", "");
+  }
+}
+
+assert {
+  res.status: eq 204
+}

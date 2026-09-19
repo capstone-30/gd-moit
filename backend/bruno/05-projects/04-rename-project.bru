@@ -1,0 +1,28 @@
+meta {
+  name: Rename project
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/hosted-projects/{{projectId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "title": "Bruno 프로젝트 수정",
+    "previousTitle": "{{previousTitle}}"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() >= 200 && res.getStatus() < 300) {
+    bru.setVar("previousTitle", res.getBody().data.title);
+  }
+}
+
+assert {
+  res.status: eq 200
+}

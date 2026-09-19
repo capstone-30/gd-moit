@@ -1,0 +1,15 @@
+meta {
+  name: List projects
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/hosted-projects?limit=20
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}

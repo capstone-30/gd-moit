@@ -1,0 +1,15 @@
+meta {
+  name: Term availability
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/me/availability/{{termId}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
