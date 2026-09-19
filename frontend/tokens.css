@@ -1,0 +1,61 @@
+:root {
+  --color-surface-inset: oklch(98% 0.004 260);
+  --shadow-primary: inset 0 1px 0 oklch(100% 0 0 / .18), 0 3px 8px var(--color-shadow);
+  --color-paper: oklch(96.5% 0.006 260);
+  --color-surface: oklch(100% 0 0);
+  --color-ink: oklch(24% 0.018 260);
+  --color-muted: oklch(46% 0.018 260);
+  --color-rule: oklch(90% 0.008 260);
+  --color-border: oklch(58% 0.016 260);
+  --font-body: system-ui, "Noto Sans KR", "Malgun Gothic", sans-serif;
+  --font-display: var(--font-body);
+  --layout-width: 1040px;
+  --layout-gutter: 24px;
+  --control-height: 52px;
+  --panel-padding: 32px;
+  --radius-control: 18px;
+  --radius-panel: 28px;
+  --color-shadow: oklch(28% 0.025 260 / 0.05);
+  --color-shadow-raised: oklch(28% 0.025 260 / 0.12);
+  --color-accent-hover: oklch(43% 0.16 264);
+  --shadow-surface: inset 0 1px 0 var(--color-surface), 0 2px 4px var(--color-shadow), 0 12px 32px var(--color-shadow);
+  --shadow-navigation: inset 0 1px 0 var(--color-surface), 0 4px 12px var(--color-shadow), 0 16px 40px var(--color-shadow-raised);
+  --shadow-control: inset 0 1px 0 var(--color-surface), 0 2px 4px var(--color-shadow);
+  --text-title: clamp(1.75rem, 3.5vw, 2.5rem);
+  --text-section: 1.25rem;
+  --text-hero: clamp(2rem, 4vw, 3rem);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-short: 120ms;
+  --color-paper-2: oklch(94.5% 0.018 264);
+  --color-accent: oklch(48% 0.16 264);
+  --color-accent-ink: oklch(99.5% 0.003 85);
+  --color-focus: oklch(40% 0.15 264);
+  --color-error: oklch(45% 0.16 28);
+  --color-transparent: transparent;
+  --space-xs: 4px; --space-sm: 8px; --space-md: 16px;
+  --space-lg: 24px; --space-xl: 32px; --space-2xl: 48px; --space-3xl: 64px;
+  --text-sm: 0.875rem; --text-base: 1rem; --text-md: 1.25rem;
+  --text-lg: 1.5625rem;
+  --radius-sm: var(--radius-control); --radius-md: var(--radius-panel); --radius-pill: 999px;
+}
+
+
+/* Shared application chrome; brand and feature tokens stay project-specific. */
+:root {
+  --navigation-width: 640px;
+  --navigation-gutter: 12px;
+  --navigation-lift: 12px;
+  --bottom-navigation-height: 80px;
+  --radius-navigation: 32px;
+  --color-popup-backdrop: oklch(24% 0.018 260 / .3);
+  --navigation-label-size: .75rem;
+  --header-height: 76px;
+  --content-top: 32px;
+  --navigation-clearance: calc(var(--bottom-navigation-height) + var(--navigation-lift) + 32px + env(safe-area-inset-bottom));
+}
+@media (min-width: 40rem) {
+  :root { --navigation-gutter: 24px; --navigation-lift: 16px; --navigation-label-size: .875rem; }
+}
+@media (max-width: 39.99rem) {
+  :root { --header-height: 68px; --content-top: 24px; }
+}

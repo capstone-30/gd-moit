@@ -1,0 +1,10 @@
+[Unit]
+Description=Moit daily retention schedule
+
+[Timer]
+OnCalendar=*-*-* 03:00:00 Asia/Seoul
+Persistent=true
+Unit=moit-retention.service
+
+[Install]
+WantedBy=timers.target
