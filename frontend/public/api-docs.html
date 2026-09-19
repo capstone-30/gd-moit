@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>모잇 API</title>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import { createApiReference } from 'https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.76.4/esm.js'
+    createApiReference('#app', { url: '/openapi.json' })
+  </script>
+</body>
+</html>

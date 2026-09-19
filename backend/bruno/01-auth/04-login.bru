@@ -1,0 +1,28 @@
+meta {
+  name: Login
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/auth/sessions
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "challengeId": "{{challengeId}}",
+    "code": "{{code}}",
+    "privacyVersion": "{{privacyVersion}}",
+    "privacyAcknowledged": true
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+docs {
+  데모 외에는 수신한 OTP를 Local 환경의 code에 입력한다. 개인정보 고지 확인 후 실행한다.
+}

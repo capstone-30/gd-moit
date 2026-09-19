@@ -1,0 +1,16 @@
+meta {
+  name: Delete hosted meeting
+  type: http
+  seq: 11
+}
+
+delete {
+  url: {{baseUrl}}/hosted-meetings/{{hostedMeetingId}}
+  body: none
+  auth: none
+}
+
+
+assert {
+  res.status: eq 204
+}

@@ -1,0 +1,30 @@
+meta {
+  name: Request OTP
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/auth/otp-challenges
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{email}}"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() >= 200 && res.getStatus() < 300) {
+    const data = res.getBody().data;
+    bru.setVar("challengeId", data.challengeId);
+    if (data.demoCode) bru.setVar("code", data.demoCode);
+    else bru.deleteVar("code");
+  }
+}
+
+assert {
+  res.status: eq 202
+}

@@ -1,0 +1,33 @@
+meta {
+  name: Propose schedule
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/meetings/{{meetingId}}/proposals
+  body: json
+  auth: none
+}
+
+headers {
+  If-Match: {{meetingEtag}}
+}
+
+body:json {
+  {
+    "date": "{{date}}",
+    "slot": {{slot}}
+  }
+}
+
+script:post-response {
+  if (res.getStatus() >= 200 && res.getStatus() < 300) {
+    bru.setVar("meetingEtag", res.getHeader("etag"));
+    bru.setVar("proposalId", res.getBody().data.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+}

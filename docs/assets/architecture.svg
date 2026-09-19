@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1568" height="452" viewBox="0 0 1568 452" role="img" aria-labelledby="title desc">
+  <title id="title">모잇 시스템 아키텍처</title>
+  <desc id="desc">같은 학교 학생의 소규모 모임과 대학 주관 활동을 지원하는 웹서비스. 브라우저에서 Next.js 서버와 데이터·외부 연동으로 이어지는 실행 흐름이며 화살표는 소스 의존성이 아니다. Application은 Domain에 의존하고 출력 어댑터는 코어의 포트를 구현하며 Composition이 실제 구현을 연결한다. SMTP와 삭제·감사 수신부의 운영 연결은 대기 중이다.</desc>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; fill: #1A2028; }
+    .heading { font-size: 27px; font-weight: 700; }
+    .subtitle { font-size: 19px; fill: #525862; }
+    .body { font-size: 19px; }
+    .label { font-size: 18px; font-weight: 700; fill: #2D56B6; }
+    .role { font-size: 17px; font-weight: 700; fill: #2D56B6; }
+    .icon { fill: none; stroke: #2D56B6; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  </style>
+  <rect width="1568" height="452" rx="16" fill="#F1F4F8"/>
+  <g transform="translate(24 24)">
+    <rect width="400" height="404" rx="14" fill="#FFFFFF" stroke="#DBDEE3"/>
+    <rect x="24" y="24" width="64" height="64" rx="16" fill="#E7EDF9"/>
+    <g class="icon" transform="translate(32 32)" aria-hidden="true"><rect x="3" y="5" width="42" height="31" rx="4"/><path d="M3 13h42M18 43h12M24 36v7"/></g>
+    <text x="104" y="63" class="label">01 | 사용자 화면</text>
+    <text x="24" y="126" class="heading">웹 브라우저</text>
+    <text x="24" y="154" class="subtitle">학생 · 대학 담당자</text>
+    <text x="24" y="181" class="subtitle">Next.js · React · TypeScript</text>
+    <path d="M24 200H376" stroke="#DBDEE3"/>
+    <text x="24" y="233" class="role">모임 · 프로필 · 기관 화면</text>
+    <text x="24" y="264" class="body">탐색·참여 · 시간 조율 · 활동 관리</text>
+    <text x="24" y="315" class="role">화면 표시 · 사용자 입력</text>
+    <text x="24" y="346" class="body">화면 렌더링 · 입력 상태 · API 요청</text>
+  </g>
+  <g transform="translate(584 24)">
+    <rect width="400" height="404" rx="14" fill="#FFFFFF" stroke="#DBDEE3"/>
+    <rect x="24" y="24" width="64" height="64" rx="16" fill="#E7EDF9"/>
+    <g class="icon" transform="translate(32 32)" aria-hidden="true"><rect x="4" y="5" width="40" height="16" rx="4"/><rect x="4" y="27" width="40" height="16" rx="4"/><path d="M12 13h1M12 35h1M23 13h13M23 35h13"/></g>
+    <text x="104" y="63" class="label">02 | 핵심 처리</text>
+    <text x="24" y="126" class="heading">Next.js 서버</text>
+    <text x="24" y="154" class="subtitle">TypeScript · 화면과 서버 통합</text>
+    <text x="24" y="181" class="subtitle">헥사고날 · 클린 아키텍처</text>
+    <path d="M24 200H376" stroke="#DBDEE3"/>
+    <text x="24" y="233" class="role">HTTP · 서버 화면 · 운영 CLI</text>
+    <text x="24" y="264" class="body">입력 어댑터 · 인증·권한 검사</text>
+    <text x="24" y="315" class="role">Application · Domain</text>
+    <text x="24" y="346" class="body">모임 · 시간 조율 · 서류 · 보관·삭제</text>
+  </g>
+  <g transform="translate(1144 24)">
+    <rect width="400" height="404" rx="14" fill="#FFFFFF" stroke="#DBDEE3"/>
+    <rect x="24" y="24" width="64" height="64" rx="16" fill="#E7EDF9"/>
+    <g class="icon" transform="translate(32 32)" aria-hidden="true"><ellipse cx="24" cy="9" rx="18" ry="6"/><path d="M6 9v30c0 8 36 8 36 0V9M6 24c0 8 36 8 36 0"/></g>
+    <text x="104" y="63" class="label">03 | 데이터·외부 연동</text>
+    <text x="24" y="126" class="heading">PostgreSQL</text>
+    <text x="24" y="154" class="subtitle">계정 · 가능 시간 · 모임 · 제출 서류</text>
+    <path d="M24 200H376" stroke="#DBDEE3"/>
+    <text x="24" y="233" class="role">SMTP</text>
+    <text x="24" y="264" class="body">학교 이메일 인증번호 발송</text>
+    <text x="24" y="315" class="role">삭제 전달 · 접근 감사</text>
+    <text x="24" y="346" class="body">외부 수신부 연동 · 운영 연결 대기</text>
+  </g>
+  <g>
+    <text x="504" y="207" class="role" text-anchor="middle">HTTP</text>
+    <text x="1064" y="207" class="role" text-anchor="middle">출력 어댑터</text>
+    <path d="M440 226H568m-8-6 8 6-8 6M1000 226H1128m-8-6 8 6-8 6" fill="none" stroke="#2D56B6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"/>
+  </g>
+</svg>

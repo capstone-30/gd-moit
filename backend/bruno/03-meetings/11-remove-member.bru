@@ -1,0 +1,16 @@
+meta {
+  name: Remove member
+  type: http
+  seq: 11
+}
+
+delete {
+  url: {{baseUrl}}/meetings/{{meetingId}}/members/{{userId}}
+  body: none
+  auth: none
+}
+
+
+assert {
+  res.status: eq 204
+}

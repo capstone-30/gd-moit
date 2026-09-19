@@ -1,0 +1,21 @@
+meta {
+  name: Session CSRF
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/auth/csrf
+  body: none
+  auth: none
+}
+
+script:post-response {
+  if (res.getStatus() >= 200 && res.getStatus() < 300) {
+    bru.setVar("csrfToken", res.getBody().csrfToken);
+  }
+}
+
+assert {
+  res.status: eq 200
+}

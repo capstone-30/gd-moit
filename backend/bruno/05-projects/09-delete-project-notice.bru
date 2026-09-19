@@ -1,0 +1,20 @@
+meta {
+  name: Delete project notice
+  type: http
+  seq: 9
+}
+
+delete {
+  url: {{baseUrl}}/hosted-projects/{{projectId}}/notices/{{noticeId}}
+  body: none
+  auth: none
+}
+
+
+headers {
+  If-Match: "{{noticeId}}-v{{noticeVersion}}"
+}
+
+assert {
+  res.status: eq 204
+}

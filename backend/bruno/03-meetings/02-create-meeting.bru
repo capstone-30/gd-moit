@@ -1,0 +1,33 @@
+meta {
+  name: Create meeting
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/meetings
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "termId": "{{termId}}",
+    "topic": "Bruno 모각공",
+    "type": "study",
+    "placeId": "{{placeId}}",
+    "capacity": 3
+  }
+}
+
+script:post-response {
+  if (res.getStatus() >= 200 && res.getStatus() < 300) {
+    const data = res.getBody().data;
+    bru.setVar("meetingId", data.id);
+    bru.setVar("meetingEtag", res.getHeader("etag"));
+  }
+}
+
+assert {
+  res.status: eq 201
+}

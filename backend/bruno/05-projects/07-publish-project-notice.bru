@@ -1,0 +1,26 @@
+meta {
+  name: Publish project notice
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/hosted-projects/{{projectId}}/notices
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "title": "Bruno 공지",
+    "body": "활동 보고서를 제출해 주세요.",
+    "documentRequirements": {
+      "activity": true,
+      "expenses": false
+    }
+  }
+}
+
+assert {
+  res.status: eq 201
+}

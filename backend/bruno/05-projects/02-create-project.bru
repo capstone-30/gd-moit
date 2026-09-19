@@ -1,0 +1,28 @@
+meta {
+  name: Create project
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/hosted-projects
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "title": "Bruno 프로젝트",
+    "activityType": "general"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() >= 200 && res.getStatus() < 300) {
+    bru.setVar("projectId", res.getBody().data.id);
+  }
+}
+
+assert {
+  res.status: eq 201
+}

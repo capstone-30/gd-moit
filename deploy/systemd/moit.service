@@ -1,0 +1,28 @@
+[Unit]
+Description=Moit web application
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+OnFailure=moit-alert@%n.service
+
+[Service]
+Type=simple
+User=moit
+Group=moit
+WorkingDirectory=/opt/moit/current
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+EnvironmentFile=/etc/moit/app.env
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start frontend --hostname 127.0.0.1 --port 3000
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/moit/current/frontend/.next/cache
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

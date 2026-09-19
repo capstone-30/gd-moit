@@ -1,0 +1,31 @@
+meta {
+  name: Update project notice
+  type: http
+  seq: 8
+}
+
+patch {
+  url: {{baseUrl}}/hosted-projects/{{projectId}}/notices/{{noticeId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "title": "Bruno 공지",
+    "body": "활동 보고서를 제출해 주세요.",
+    "documentRequirements": {
+      "activity": true,
+      "expenses": false
+    },
+    "version": {{noticeVersion}}
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  성공 후 재수정·삭제 전 공지 목록에서 최신 version을 확인한다.
+}

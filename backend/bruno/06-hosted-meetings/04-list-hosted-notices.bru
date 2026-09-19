@@ -1,0 +1,15 @@
+meta {
+  name: List hosted notices
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/hosted-meetings/{{hostedMeetingId}}/notices?limit=20
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}

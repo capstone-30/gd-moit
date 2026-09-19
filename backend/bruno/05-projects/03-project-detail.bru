@@ -1,0 +1,21 @@
+meta {
+  name: Project detail
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/hosted-projects/{{projectId}}
+  body: none
+  auth: none
+}
+
+script:post-response {
+  if (res.getStatus() >= 200 && res.getStatus() < 300) {
+    bru.setVar("previousTitle", res.getBody().data.title);
+  }
+}
+
+assert {
+  res.status: eq 200
+}

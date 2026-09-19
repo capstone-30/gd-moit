@@ -1,0 +1,23 @@
+meta {
+  name: Report meeting
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/reports
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "targetType": "meeting",
+    "targetId": "{{meetingId}}",
+    "reason": "Bruno 합성 데이터 신고 예시"
+  }
+}
+
+assert {
+  res.status: eq 201
+}

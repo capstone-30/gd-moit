@@ -1,0 +1,39 @@
+meta {
+  name: Schedule hosted meeting
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/hosted-meetings/{{hostedMeetingId}}/schedule
+  body: json
+  auth: none
+}
+
+headers {
+  If-Match: {{hostedMeetingEtag}}
+}
+
+body:json {
+  {
+    "date": "{{date}}",
+    "slot": {{slot}},
+    "placeId": "{{placeId}}"
+  }
+}
+
+script:post-response {
+  if (res.getStatus() >= 200 && res.getStatus() < 300) {
+    const data = res.getBody().data;
+    bru.setVar("hostedMeetingEtag", data.etag);
+    bru.setVar("documentsEtag", data.myDocuments ? data.myDocuments.etag : "");
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  배정 학생으로 실행한다.
+}

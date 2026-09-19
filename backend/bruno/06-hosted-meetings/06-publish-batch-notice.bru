@@ -1,0 +1,29 @@
+meta {
+  name: Publish batch notice
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/hosted-meetings/notices
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "title": "Bruno 공지",
+    "body": "활동 보고서를 제출해 주세요.",
+    "documentRequirements": {
+      "activity": true,
+      "expenses": false
+    },
+    "meetingIds": [
+      "{{hostedMeetingId}}"
+    ]
+  }
+}
+
+assert {
+  res.status: eq 201
+}
