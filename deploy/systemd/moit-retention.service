@@ -1,0 +1,20 @@
+[Unit]
+Description=Moit retention cleanup and deletion delivery
+Wants=network-online.target
+After=network-online.target
+OnFailure=moit-alert@%n.service
+
+[Service]
+Type=oneshot
+User=moit
+Group=moit
+WorkingDirectory=/opt/moit/current
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/moit/retention.env
+ExecStart=/usr/bin/node --conditions=react-server --import tsx backend/scripts/retention.ts
+TimeoutStartSec=15min
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+UMask=0077

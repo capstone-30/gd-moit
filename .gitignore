@@ -1,0 +1,22 @@
+# OS
+.DS_Store
+._*
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Dependencies and generated files
+node_modules/
+.next/
+/frontend/next-env.d.ts
+*.tsbuildinfo
+npm-debug.log*
+
+# Local environment
+.env
+.env.*
+!.env.example
+/.hallmark/

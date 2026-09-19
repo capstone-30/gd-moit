@@ -1,0 +1,15 @@
+[Unit]
+Description=Moit failure notification for %i
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=moit
+Group=moit
+ExecStart=/usr/bin/curl --config /etc/moit/alert.curl --fail --silent --max-time 10 --json '{"code":"SERVICE_FAILED","service":"%i"}'
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+UMask=0077
