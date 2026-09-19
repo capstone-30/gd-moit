@@ -1,0 +1,37 @@
+{
+  "name": "moit",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev frontend",
+    "build": "next build frontend",
+    "start": "next start frontend",
+    "typecheck": "tsc --noEmit -p frontend/tsconfig.json",
+    "test": "node --env-file-if-exists=frontend/.env.local --conditions=react-server --import tsx --test backend/tests/*.test.ts frontend/tests/*.test.ts",
+    "db:migrate": "node --env-file-if-exists=frontend/.env.local --conditions=react-server --import tsx backend/scripts/migrate.ts",
+    "retention": "node --env-file-if-exists=frontend/.env.local --conditions=react-server --import tsx backend/scripts/retention.ts",
+    "reports:review": "node --env-file-if-exists=frontend/.env.local --conditions=react-server --import tsx backend/scripts/review-report.ts",
+    "db:restore-deletions": "node --env-file-if-exists=frontend/.env.local --conditions=react-server --import tsx backend/scripts/restore-deletions.ts"
+  },
+  "dependencies": {
+    "next": "^16.0.0",
+    "nodemailer": "^10.0.13",
+    "pg": "^8.16.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/nodemailer": "^7.0.0",
+    "@types/pg": "^8.15.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22.9.0"
+  }
+}

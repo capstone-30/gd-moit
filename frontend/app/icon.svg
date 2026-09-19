@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Hallmark · pre-emit critique: P5 H5 E4 S4 R5 V4 -->
+  <title>모잇 — 함께 모이는 두 사람</title>
+  <rect width="64" height="64" rx="16" fill="#2D56B6"/>
+  <g fill="#F9F6F0">
+    <circle cx="24" cy="18" r="4"/>
+    <circle cx="40" cy="18" r="4"/>
+  </g>
+  <path d="M16 46V37C16 27 32 27 32 37V46M32 37C32 27 48 27 48 37V46"
+        fill="none" stroke="#F9F6F0" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
