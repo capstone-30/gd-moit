@@ -200,7 +200,7 @@ test('주관 모임 카드는 역할별 목적지로 연결하고 제출 현황�
   assert.match(render({institution:true,meeting:{...meeting,date:'2026-10-19',slot:101,place:'공개 장소'}}),/2026-10-19/);
 });
 
-function timetableImage({dark=false,blocks=[] as {day:number;from:number;to:number;color:number[]}[]}={}) {
+function timetableImage({dark=false,labels=true,blocks=[] as {day:number;from:number;to:number;color:number[]}[]}={}) {
   // 시간 열 40px·요일 열 150px×5·머리글 40px·1시간 100px(9시~21시) 합성 캡처
   const width=40+150*5,height=40+100*12,data=new Uint8ClampedArray(width*height*4);
   const bg=dark?18:255,line=dark?48:232;
@@ -208,6 +208,8 @@ function timetableImage({dark=false,blocks=[] as {day:number;from:number;to:numb
   for(let y=0;y<height;y++)for(let x=0;x<width;x++)paint(x,y,[bg,bg,bg]);
   for(let d=0;d<=5;d++)for(let y=0;y<height;y++)paint(Math.min(width-1,40+150*d),y,[line,line,line]);
   for(let h=0;h<12;h++)for(let x=0;x<width;x++)paint(x,40+100*h,[line,line,line]);
+  // 요일 머리글 글자 자리. 없으면 스크롤해 첫 줄 위에 빈 줄 일부만 보이는 캡처가 된다.
+  if(labels)for(let d=0;d<5;d++)for(let y=12;y<28;y++)for(let x=40+150*d+65;x<40+150*d+85;x++)paint(x,y,dark?[230,230,230]:[60,60,60]);
   for(const b of blocks){
     const top=40+Math.round((b.from-9)*100),bottom=40+Math.round((b.to-9)*100);
     for(let y=top;y<bottom;y++)for(let x=40+150*(b.day-1)+2;x<40+150*b.day-1;x++)paint(x,y,(x+y)%9===0?[255,255,255]:b.color);
@@ -224,15 +226,40 @@ test('시간표 이미지 분석은 수업 블록과 10분 이상 겹치는 교�
     const result=analyzeTimetable(timetableImage({dark,blocks}),slots);
     assert.ok(result.ok);
     assert.equal(result.blocks,3);
+    assert.equal(result.grid,'hour');
     assert.deepEqual(result.busy,[101,102,306,510,511]);
     assert.equal(result.available.length,60-5);
   }
   assert.deepEqual(slots,original);
 });
 
+test('교시 단위 격자·연한 블록 캡처는 블록이 걸친 교시를 그대로 제외',()=>{
+  // 시간 열 135px·요일 열 153px×5·머리글 60px·1교시 170px, 옅은 격자선·파스텔 블록과 왼쪽 진한 막대, 아래가 잘린 블록
+  const time=135,col=153,head=60,row=170,width=time+col*5,height=head+row*10+60,data=new Uint8ClampedArray(width*height*4);
+  const paint=(x:number,y:number,c:number[])=>{const i=(y*width+x)*4;data[i]=c[0];data[i+1]=c[1];data[i+2]=c[2];data[i+3]=255;};
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++)paint(x,y,[255,255,255]);
+  for(let d=0;d<=5;d++)for(let y=0;y<height;y++)paint(Math.min(width-1,time+col*d),y,[250,250,250]);
+  for(let r=0;r<=10;r++)for(let x=0;x<width;x++)paint(x,head+row*r,[250,250,250]);
+  for(let d=0;d<5;d++)for(let y=20;y<40;y++)for(let x=time+col*d+65;x<time+col*d+85;x++)paint(x,y,[150,150,150]);
+  const block=(day:number,from:number,to:number,fill:number[],bar:number[])=>{
+    for(let y=head+row*(from-1);y<Math.min(height,head+row*to);y++)for(let x=time+col*(day-1);x<time+col*day;x++)paint(x,y,x<time+col*(day-1)+4?bar:fill);
+  };
+  block(1,6,7,[250,238,253],[200,167,219]);
+  block(2,5,6,[233,251,234],[90,190,100]);
+  block(2,7,8,[255,253,231],[230,200,40]);
+  block(5,9,12,[235,247,255],[60,160,220]);
+  const pad=(n:number)=>String(n).padStart(2,'0');
+  const slots=[1,2,3,4,5].flatMap(day=>Array.from({length:12},(_,i)=>({slot:day*100+i+1,startsAt:`${pad(9+i)}:30:00`,endsAt:`${pad(10+i)}:20:00`})));
+  const result=analyzeTimetable({width,height,data},slots);
+  assert.ok(result.ok);
+  assert.equal(result.grid,'period');
+  assert.deepEqual(result.busy,[106,107,205,206,207,208,509,510,511]);
+});
+
 test('시간표 이미지 분석은 시간표가 아니거나 수업 블록이 없는 이미지를 거부',()=>{
   const slots=[{slot:101,startsAt:'09:30:00',endsAt:'10:20:00'}];
   assert.deepEqual(analyzeTimetable(timetableImage(),slots),{ok:false,reason:'blocks'});
+  assert.deepEqual(analyzeTimetable(timetableImage({labels:false,blocks:[{day:1,from:10,to:12,color:[240,135,122]}]}),slots),{ok:false,reason:'start'});
   const noise={width:300,height:300,data:Uint8ClampedArray.from({length:300*300*4},(_,i)=>i%4===3?255:(i*7919)%256)};
   assert.equal(analyzeTimetable(noise,slots).ok,false);
   const plain={width:300,height:300,data:new Uint8ClampedArray(300*300*4).fill(255)};
