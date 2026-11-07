@@ -4,7 +4,7 @@ import {ConfirmDialog,PopupDialog} from './popup';
 
 export const CloseProfileCard=createContext(()=>{});
 
-export type ProfileCard={id:string;label:string;content:ReactNode;dirty?:boolean;onDiscard?:()=>void};
+export type ProfileCard={id:string;label:string;content:ReactNode;dirty?:boolean;busy?:boolean;onDiscard?:()=>void};
 
 export default function ProfileCards({cards}:{cards:ProfileCard[]}) {
   const [active,setActive]=useState<string|null>(null),[confirming,setConfirming]=useState(false);
@@ -26,10 +26,12 @@ export default function ProfileCards({cards}:{cards:ProfileCard[]}) {
     setActive(null);
   }
   function requestClose(card:ProfileCard) {
+    if(card.busy)return;
     if(card.dirty)setConfirming(true);
     else close();
   }
   function discard(card:ProfileCard) {
+    if(card.busy)return;
     setConfirming(false);
     card.onDiscard?.();
     close();

@@ -1,13 +1,13 @@
 import type {Slot} from './client';
 
 // 시간표 앱 캡처(단색 배경·요일 열·가로 격자선·색 수업 블록)를 픽셀로 분석한다. 브라우저에서만 실행한다.
-// 격자 한 줄은 1시간(첫 줄 오전 9시) 또는 1교시(첫 줄 1교시)다. 블록 경계가 격자선에 맞으면 교시형으로 본다.
+// 격자 한 줄은 사용자가 선택한 1시간(첫 줄 오전 9시) 또는 1교시(첫 줄 1교시)다.
 export type Pixels={width:number;height:number;data:ArrayLike<number>};
 export type TimetableFailure='background'|'columns'|'grid'|'start'|'blocks';
 export type TimetableGrid='hour'|'period';
 export type TimetableAnalysis={ok:true;available:number[];busy:number[];blocks:number;grid:TimetableGrid}|{ok:false;reason:TimetableFailure};
 
-const startHour=9,overlapMinutes=10,periodOverlap=0.2,alignedEdge=0.1;
+const startHour=9,overlapMinutes=10,periodOverlap=0.2;
 const minutes=(time:string)=>{const [h,m]=time.split(':').map(Number);return h*60+m;};
 
 function groups(indices:number[],gap=2) {
@@ -23,7 +23,7 @@ function groups(indices:number[],gap=2) {
 }
 const median=(values:number[])=>{const s=[...values].sort((a,b)=>a-b);return s[Math.floor(s.length/2)];};
 
-export function analyzeTimetable(image:Pixels,slots:Slot[]):TimetableAnalysis {
+export function analyzeTimetable(image:Pixels,slots:Slot[],grid:TimetableGrid):TimetableAnalysis {
   const {width,height,data}=image;
   if(width<50||height<50)return {ok:false,reason:'background'};
   const at=(x:number,y:number)=>(y*width+x)*4;
@@ -117,7 +117,7 @@ export function analyzeTimetable(image:Pixels,slots:Slot[]):TimetableAnalysis {
   }
 
   // 5. 열마다 색이 채워진 행 구간을 수업 블록으로 본다.
-  const blocks:{day:number;from:number;to:number;cut:boolean}[]=[];let busyRows=0;
+  const blocks:{day:number;from:number;to:number}[]=[];let busyRows=0;
   const base=Math.max(top,Math.round(origin));
   for(const [index,c] of inner.entries()) {
     const fill:number[]=[];
@@ -128,7 +128,7 @@ export function analyzeTimetable(image:Pixels,slots:Slot[]):TimetableAnalysis {
       const length=end-start+1;
       if(length>=slope*0.25){
         if(fill.slice(start,end+1).reduce((n,v)=>n+v,0)/length<0.5)broken=true;
-        else{blocks.push({day:index+1,from:toRow(base+start),to:toRow(base+end+1),cut:base+end+1>=bottom-2});busyRows+=length;}
+        else{blocks.push({day:index+1,from:toRow(base+start),to:toRow(base+end+1)});busyRows+=length;}
       }
       start=-1;
     };
@@ -142,9 +142,6 @@ export function analyzeTimetable(image:Pixels,slots:Slot[]):TimetableAnalysis {
   if(!blocks.length||busyRows>(bottom-origin)*inner.length*0.85)return {ok:false,reason:'blocks'};
 
   // 6. 시간형은 수업과 10분 이상, 교시형은 해당 줄의 20% 이상 겹치는 교시만 불가능으로 둔다.
-  const offset=(v:number)=>Math.abs(v-Math.round(v));
-  // 캡처 아래 끝에서 잘린 블록의 끝은 격자선과 무관하므로 판정에서 뺀다.
-  const grid:TimetableGrid=blocks.every(b=>offset(b.from)<=alignedEdge&&(b.cut||offset(b.to)<=alignedEdge))?'period':'hour';
   const overlaps=(b:typeof blocks[number],s:Slot)=>grid==='period'
     ?Math.min(b.to,s.slot%100)-Math.max(b.from,s.slot%100-1)>=periodOverlap
     :Math.min(startHour*60+b.to*60,minutes(s.endsAt))-Math.max(startHour*60+b.from*60,minutes(s.startsAt))>=overlapMinutes;

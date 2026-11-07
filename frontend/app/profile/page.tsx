@@ -9,9 +9,9 @@ import TimetableImageImport from '../components/timetable-image-import';
 import {reusableSlots,type SavedAvailability} from '../components/availability';
 export default function ProfilePage(){
   const state=useData(loadAvailabilityContext),d=state.data;
-  const [availabilityDirty,setAvailabilityDirty]=useState(false),[availabilityReset,setAvailabilityReset]=useState(0);
+  const [availabilityDirty,setAvailabilityDirty]=useState(false),[availabilityReset,setAvailabilityReset]=useState(0),[availabilityBusy,setAvailabilityBusy]=useState(false);
   return <div className="profile-page"><Heading title="프로필"/><LoadFeedback state={state}/>{d&&<><div className="profile-account-summary"><p>{d.c.school?.name}</p><p className="help break-word">{d.me.email}</p></div><ProfileCards cards={[
-    {id:'availability',label:'가능 시간',dirty:availabilityDirty,onDiscard:()=>{setAvailabilityDirty(false);setAvailabilityReset(n=>n+1);},content:<section className="detail-section"><h2>학기 가능 시간</h2>{d.c.term?<AvailabilityForm key={JSON.stringify([d.c.term,d.times,availabilityReset])} term={d.c.term} times={d.times} reload={state.reload} onDirtyChange={setAvailabilityDirty}/>:<p>학기가 아직 설정되지 않았습니다. 설정되면 여기에서 시간을 등록할 수 있어요.</p>}</section>},
+    {id:'availability',label:'가능 시간',dirty:availabilityDirty,busy:availabilityBusy,onDiscard:()=>{setAvailabilityDirty(false);setAvailabilityReset(n=>n+1);},content:<section className="detail-section"><h2>학기 가능 시간</h2>{d.c.term?<AvailabilityForm key={JSON.stringify([d.c.term,d.times,availabilityReset])} term={d.c.term} times={d.times} reload={state.reload} onDirtyChange={setAvailabilityDirty} onBusyChange={setAvailabilityBusy}/>:<p>학기가 아직 설정되지 않았습니다. 설정되면 여기에서 시간을 등록할 수 있어요.</p>}</section>},
     {id:'optional-profile',label:'내 정보',content:<section className="detail-section"><h2>선택 프로필</h2><p className="help">입력하지 않아도 모임을 이용할 수 있어요. 학과·입학 연도·관심 주제만 참여자에게 공개하며, 표시 이름은 나에게만 보입니다.</p><ProfileForm key={JSON.stringify([d.me.displayName,d.me.department,d.me.entryYear,d.me.interests,d.me.optionalProfileConsent])} me={d.me} c={d.c} reload={state.reload}/></section>},
     {id:'blocked-users',label:'차단',content:<Blocks/>},
     {id:'account',label:'계정',content:<AccountControls/>},
@@ -26,14 +26,14 @@ function Blocks(){
   return <section className="detail-section"><h2>차단 관리</h2><p className="help">차단한 사용자를 확인하고 다시 모임을 볼 수 있도록 해제할 수 있어요.</p><LoadFeedback state={state}/>{state.data?.data.length===0&&<div className="profile-empty"><h3>차단한 사용자가 없어요</h3><p className="help">모임 상세의 안전 메뉴에서 사용자를 차단할 수 있어요.</p></div>}{state.data?.data.map((b,i)=><div className="profile-block-row" key={b.userId}><p>차단 사용자 {(state.pages.length-1)*20+i+1} · <ProfileText profile={b.profile}/></p><Form label="차단 해제" submit={async()=>{await api(`me/blocks/${b.userId}`,{method:'DELETE'});state.reload();}}><span className="help">해제하면 상대 모임이 다시 표시됩니다.</span></Form></div>)}<div className="form-actions"><PageButtons {...state} nextCursor={state.data?.nextCursor}/></div></section>;
 }
 
-function AvailabilityForm({term,times,reload,onDirtyChange}:{term:NonNullable<Config['term']>,times:Availability|null,reload:()=>void,onDirtyChange:(dirty:boolean)=>void}) {
+function AvailabilityForm({term,times,reload,onDirtyChange,onBusyChange}:{term:NonNullable<Config['term']>,times:Availability|null,reload:()=>void,onDirtyChange:(dirty:boolean)=>void,onBusyChange:(busy:boolean)=>void}) {
   const [selected,setSelected]=useState(times?.slots??[]),[imported,setImported]=useState<{name:string,skipped:number}|null>(null);
   const [dirty,setLocalDirty]=useState(false),[busy,setBusy]=useState(false);
   function setDirty(value:boolean){setLocalDirty(value);onDirtyChange(value);}
   const closeCard=useContext(CloseProfileCard);
   function select(slots:number[]){setSelected(slots);setDirty(true);}
   const history=useApiData<SavedAvailability[]>('me/availability'),sources=history.data?.data.filter(t=>t.termId!==term.id)??[];
-  return <Form dirtyGuard dirty={dirty} onDirtyChange={setDirty} onBusy={setBusy} successMessage="가능 시간을 저장했어요." label="변경 사항 저장" submit={async()=>{await api(`me/availability/${term.id}`,{method:'PUT',body:{slots:selected}});setDirty(false);closeCard();reload();}}>
+  return <Form dirtyGuard dirty={dirty} onDirtyChange={setDirty} onBusy={value=>{setBusy(value);onBusyChange(value);}} successMessage="가능 시간을 저장했어요." label="변경 사항 저장" submit={async()=>{await api(`me/availability/${term.id}`,{method:'PUT',body:{slots:selected}});setDirty(false);closeCard();reload();}}>
     <p className="profile-save-status" role="status">{busy?'저장 중…':dirty?'저장하지 않은 변경사항':times?.registered?'✓ 저장됨':'아직 저장하지 않았어요'}</p>
     <p className="help">{term.startsOn} ~ {term.endsOn} · {times?.registered?'등록한 시간을 모임마다 재사용합니다.':'아직 시간을 등록하지 않았습니다.'}</p>
     <Popup className="profile-import" title="이미지·다른 학기에서 불러오기">

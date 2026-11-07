@@ -223,7 +223,7 @@ test('시간표 이미지 분석은 수업 블록과 10분 이상 겹치는 교�
   const original=structuredClone(slots);
   const blocks=[{day:1,from:9.5,to:11+20/60,color:[240,135,122]},{day:3,from:14.5,to:15+20/60,color:[127,209,191]},{day:5,from:18.25,to:20,color:[235,196,106]}];
   for(const dark of [false,true]) {
-    const result=analyzeTimetable(timetableImage({dark,blocks}),slots);
+    const result=analyzeTimetable(timetableImage({dark,blocks}),slots,'hour');
     assert.ok(result.ok);
     assert.equal(result.blocks,3);
     assert.equal(result.grid,'hour');
@@ -231,6 +231,17 @@ test('시간표 이미지 분석은 수업 블록과 10분 이상 겹치는 교�
     assert.equal(result.available.length,60-5);
   }
   assert.deepEqual(slots,original);
+});
+
+test('정각 수업도 선택한 시간형 눈금으로 해석해 겹치는 첫 교시를 제외한다',()=>{
+  const slots=[101,102,103,104].map((slot,i)=>({slot,startsAt:`${9+i}:30:00`,endsAt:`${10+i}:20:00`}));
+  const image=timetableImage({blocks:[{day:1,from:10,to:12,color:[240,135,122]}]});
+  const hourly=analyzeTimetable(image,slots,'hour');
+  const periods=analyzeTimetable(image,slots,'period');
+  assert.ok(hourly.ok&&periods.ok);
+  assert.deepEqual(hourly.busy,[101,102,103]);
+  assert.deepEqual(hourly.available,[104]);
+  assert.deepEqual(periods.busy,[102,103]);
 });
 
 test('교시 단위 격자·연한 블록 캡처는 블록이 걸친 교시를 그대로 제외',()=>{
@@ -250,7 +261,7 @@ test('교시 단위 격자·연한 블록 캡처는 블록이 걸친 교시를 �
   block(5,9,12,[235,247,255],[60,160,220]);
   const pad=(n:number)=>String(n).padStart(2,'0');
   const slots=[1,2,3,4,5].flatMap(day=>Array.from({length:12},(_,i)=>({slot:day*100+i+1,startsAt:`${pad(9+i)}:30:00`,endsAt:`${pad(10+i)}:20:00`})));
-  const result=analyzeTimetable({width,height,data},slots);
+  const result=analyzeTimetable({width,height,data},slots,'period');
   assert.ok(result.ok);
   assert.equal(result.grid,'period');
   assert.deepEqual(result.busy,[106,107,205,206,207,208,509,510,511]);
@@ -258,12 +269,12 @@ test('교시 단위 격자·연한 블록 캡처는 블록이 걸친 교시를 �
 
 test('시간표 이미지 분석은 시간표가 아니거나 수업 블록이 없는 이미지를 거부',()=>{
   const slots=[{slot:101,startsAt:'09:30:00',endsAt:'10:20:00'}];
-  assert.deepEqual(analyzeTimetable(timetableImage(),slots),{ok:false,reason:'blocks'});
-  assert.deepEqual(analyzeTimetable(timetableImage({labels:false,blocks:[{day:1,from:10,to:12,color:[240,135,122]}]}),slots),{ok:false,reason:'start'});
+  assert.deepEqual(analyzeTimetable(timetableImage(),slots,'hour'),{ok:false,reason:'blocks'});
+  assert.deepEqual(analyzeTimetable(timetableImage({labels:false,blocks:[{day:1,from:10,to:12,color:[240,135,122]}]}),slots,'hour'),{ok:false,reason:'start'});
   const noise={width:300,height:300,data:Uint8ClampedArray.from({length:300*300*4},(_,i)=>i%4===3?255:(i*7919)%256)};
-  assert.equal(analyzeTimetable(noise,slots).ok,false);
+  assert.equal(analyzeTimetable(noise,slots,'hour').ok,false);
   const plain={width:300,height:300,data:new Uint8ClampedArray(300*300*4).fill(255)};
-  assert.equal(analyzeTimetable(plain,slots).ok,false);
+  assert.equal(analyzeTimetable(plain,slots,'hour').ok,false);
 });
 
 test('커서는 빈 값과 예약 문자를 보존하고 다른 검색 조건과 결합한다',()=>{

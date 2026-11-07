@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useId,useRef,useState} from 'react';
 import type {Slot} from './client';
-import {analyzeTimetable,type Pixels} from './timetable-image';
+import {analyzeTimetable,type Pixels,type TimetableGrid} from './timetable-image';
 
 const maxSide=2400;
 const failure='시간표를 인식하지 못했어요. 요일·시간 격자와 수업 블록이 보이는 시간표 앱 화면을 캡처해 다시 올리거나 아래에서 직접 선택해주세요.';
@@ -21,10 +21,11 @@ export default function TimetableImageImport({slots,selected,onApply}:{slots:Slo
   const id=useId(),input=useRef<HTMLInputElement>(null),attempt=useRef(0);
   const [preview,setPreview]=useState<{url:string;name:string;previous:number[];busy:number}|null>(null);
   const [busy,setBusy]=useState(false),[error,setError]=useState('');
+  const [grid,setGrid]=useState<TimetableGrid|''>('');
   useEffect(()=>()=>{attempt.current++;},[]);
   useEffect(()=>()=>{if(preview)URL.revokeObjectURL(preview.url);},[preview?.url]);
   async function choose(file:File|undefined) {
-    if(!file)return;
+    if(!file||!grid)return;
     const current=++attempt.current;
     setError('');
     if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>10*1024*1024) {
@@ -35,7 +36,7 @@ export default function TimetableImageImport({slots,selected,onApply}:{slots:Slo
     try {
       const image=new Image();image.src=url;await image.decode();
       if(current!==attempt.current){URL.revokeObjectURL(url);return;}
-      const data=readPixels(image),result=analyzeTimetable(data,slots);
+      const data=readPixels(image),result=analyzeTimetable(data,slots,grid);
       if(!result.ok){URL.revokeObjectURL(url);setError(result.reason==='start'?scrolled:failure);return;}
       const previous=preview?.previous??[...selected];
       setPreview({url,name:file.name,previous,busy:result.busy.length});
@@ -51,11 +52,18 @@ export default function TimetableImageImport({slots,selected,onApply}:{slots:Slo
   }
   return <div className="timetable-import" aria-busy={busy}>
     <div className="timetable-import-heading"><div><h3>이미지로 빠르게 채우기</h3><p className="help" id={`${id}-help`}>시간표 앱 캡처에서 수업을 찾아 비는 교시를 채웁니다. 이미지는 서버에 전송되지 않습니다.</p></div>
-      <label className={`button image-upload${busy||!slots.length?' is-disabled':''}`}>
+      <label className={`button image-upload${busy||!slots.length||!grid?' is-disabled':''}`}>
         <span>{busy?'이미지 분석 중…':'시간표 이미지 업로드'}</span>
-        <input ref={input} type="file" accept="image/png,image/jpeg,image/webp" disabled={busy||!slots.length} aria-describedby={`${id}-help${error?` ${id}-error`:''}`} aria-invalid={Boolean(error)} onChange={e=>{void choose(e.target.files?.[0]);e.target.value='';}}/>
+        <input ref={input} type="file" accept="image/png,image/jpeg,image/webp" disabled={busy||!slots.length||!grid} aria-describedby={`${id}-help${error?` ${id}-error`:''}`} aria-invalid={Boolean(error)} onChange={e=>{void choose(e.target.files?.[0]);e.target.value='';}}/>
       </label>
     </div>
+    <label htmlFor={`${id}-grid`}>이미지 시간 눈금</label>
+    <select id={`${id}-grid`} value={grid} disabled={busy} onChange={event=>{if(preview)cancel();setGrid(event.target.value as TimetableGrid|'');}}>
+      <option value="" disabled>시간표 형식을 선택해주세요</option>
+      <option value="hour">시간형 · 9시부터 한 줄에 1시간</option>
+      <option value="period">교시형 · 1교시부터 한 줄에 1교시</option>
+    </select>
+    <p className="help">이미지의 세로 시간 눈금에 맞춰 형식을 선택한 뒤 업로드해주세요.</p>
     {error&&<p className="error-message" id={`${id}-error`} role="alert">{error}</p>}
     {preview&&<div className="timetable-import-result">
       <img src={preview.url} alt="선택한 시간표 이미지 미리보기"/>
