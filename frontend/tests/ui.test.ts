@@ -14,7 +14,8 @@ import assert from 'node:assert/strict';
 import {dateRange} from '../app/components/calendar';
 import {slotMatchesDate} from '../../shared/date';
 import {api,RequestError,cursorQuery} from '../app/components/api';
-import {reusableSlots,mockImageAvailability,type SavedAvailability} from '../app/components/availability';
+import {reusableSlots,type SavedAvailability} from '../app/components/availability';
+import {analyzeTimetable} from '../app/components/timetable-image';
 import {createElement,type ComponentProps} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 
@@ -199,12 +200,43 @@ test('주관 모임 카드는 역할별 목적지로 연결하고 제출 현황�
   assert.match(render({institution:true,meeting:{...meeting,date:'2026-10-19',slot:101,place:'공개 장소'}}),/2026-10-19/);
 });
 
-test('이미지 목업은 고정 예시 수업을 제외한 운영 교시만 선택하고 원본을 보존',()=>{
-  const slots=[101,102,103,112,203,204,205,512].map(slot=>({slot,startsAt:'09:30:00',endsAt:'10:20:00'}));
+function timetableImage({dark=false,blocks=[] as {day:number;from:number;to:number;color:number[]}[]}={}) {
+  // 시간 열 40px·요일 열 150px×5·머리글 40px·1시간 100px(9시~21시) 합성 캡처
+  const width=40+150*5,height=40+100*12,data=new Uint8ClampedArray(width*height*4);
+  const bg=dark?18:255,line=dark?48:232;
+  const paint=(x:number,y:number,c:number[])=>{const i=(y*width+x)*4;data[i]=c[0];data[i+1]=c[1];data[i+2]=c[2];data[i+3]=255;};
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++)paint(x,y,[bg,bg,bg]);
+  for(let d=0;d<=5;d++)for(let y=0;y<height;y++)paint(Math.min(width-1,40+150*d),y,[line,line,line]);
+  for(let h=0;h<12;h++)for(let x=0;x<width;x++)paint(x,40+100*h,[line,line,line]);
+  for(const b of blocks){
+    const top=40+Math.round((b.from-9)*100),bottom=40+Math.round((b.to-9)*100);
+    for(let y=top;y<bottom;y++)for(let x=40+150*(b.day-1)+2;x<40+150*b.day-1;x++)paint(x,y,(x+y)%9===0?[255,255,255]:b.color);
+  }
+  return {width,height,data};
+}
+
+test('시간표 이미지 분석은 수업 블록과 10분 이상 겹치는 교시만 제외하고 다크 모드도 인식',()=>{
+  const pad=(n:number)=>String(n).padStart(2,'0');
+  const slots=[1,2,3,4,5].flatMap(day=>Array.from({length:12},(_,i)=>({slot:day*100+i+1,startsAt:`${pad(9+i)}:30:00`,endsAt:`${pad(10+i)}:20:00`})));
   const original=structuredClone(slots);
-  assert.deepEqual(mockImageAvailability(slots),[103,112,205,512]);
+  const blocks=[{day:1,from:9.5,to:11+20/60,color:[240,135,122]},{day:3,from:14.5,to:15+20/60,color:[127,209,191]},{day:5,from:18.25,to:20,color:[235,196,106]}];
+  for(const dark of [false,true]) {
+    const result=analyzeTimetable(timetableImage({dark,blocks}),slots);
+    assert.ok(result.ok);
+    assert.equal(result.blocks,3);
+    assert.deepEqual(result.busy,[101,102,306,510,511]);
+    assert.equal(result.available.length,60-5);
+  }
   assert.deepEqual(slots,original);
-  assert.deepEqual(mockImageAvailability([]),[]);
+});
+
+test('시간표 이미지 분석은 시간표가 아니거나 수업 블록이 없는 이미지를 거부',()=>{
+  const slots=[{slot:101,startsAt:'09:30:00',endsAt:'10:20:00'}];
+  assert.deepEqual(analyzeTimetable(timetableImage(),slots),{ok:false,reason:'blocks'});
+  const noise={width:300,height:300,data:Uint8ClampedArray.from({length:300*300*4},(_,i)=>i%4===3?255:(i*7919)%256)};
+  assert.equal(analyzeTimetable(noise,slots).ok,false);
+  const plain={width:300,height:300,data:new Uint8ClampedArray(300*300*4).fill(255)};
+  assert.equal(analyzeTimetable(plain,slots).ok,false);
 });
 
 test('커서는 빈 값과 예약 문자를 보존하고 다른 검색 조건과 결합한다',()=>{
