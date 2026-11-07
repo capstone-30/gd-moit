@@ -1,4 +1,4 @@
-import Popup from '../app/components/popup';
+import Popup,{ConfirmDialog} from '../app/components/popup';
 import {Slots,loadAccountContext} from '../app/components/client';
 import {LoadFeedback} from '../app/components/client';
 import {PageButtons} from '../app/components/client';
@@ -235,6 +235,15 @@ test('팝업은 접근 가능한 제목·열기·닫기 버튼을 제공하고 �
   assert.ok(html.includes(`<h2 id="${titleId}">모임 신고</h2>`));
   assert.match(html,/>닫기<\/button>/);
   assert.match(html,/신고 내용/);
+  assert.doesNotMatch(html,/<dialog[^>]* open/);
+});
+
+test('변경 폐기 확인 창은 제목·안내와 삭제·계속 변경 버튼을 제공한다',()=>{
+  const html=renderToStaticMarkup(createElement(ConfirmDialog,{open:false,title:'변경한 내용을 삭제하겠습니까?',message:'지금 돌아가면 변경한 내용이 모두 삭제됩니다.',confirmLabel:'삭제',cancelLabel:'계속 변경',onConfirm:()=>{},onCancel:()=>{}}));
+  assert.match(html,/<dialog[^>]*role="alertdialog"/);
+  assert.match(html,/<h2[^>]*>변경한 내용을 삭제하겠습니까\?<\/h2>/);
+  assert.match(html,/지금 돌아가면 변경한 내용이 모두 삭제됩니다\./);
+  assert.ok(html.indexOf('>삭제</button>')<html.indexOf('>계속 변경</button>'));
   assert.doesNotMatch(html,/<dialog[^>]* open/);
 });
 
