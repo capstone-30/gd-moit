@@ -19,7 +19,7 @@ function readPixels(image:HTMLImageElement):Pixels {
 
 export default function TimetableImageImport({slots,selected,onApply}:{slots:Slot[];selected:number[];onApply:(slots:number[])=>void}) {
   const id=useId(),input=useRef<HTMLInputElement>(null),attempt=useRef(0);
-  const [preview,setPreview]=useState<{url:string;name:string;previous:number[];busy:number}|null>(null);
+  const [preview,setPreview]=useState<{url:string;name:string;previous:number[];busyCount:number}|null>(null);
   const [busy,setBusy]=useState(false),[error,setError]=useState('');
   const [grid,setGrid]=useState<TimetableGrid|''>('');
   useEffect(()=>()=>{attempt.current++;},[]);
@@ -39,7 +39,7 @@ export default function TimetableImageImport({slots,selected,onApply}:{slots:Slo
       const data=readPixels(image),result=analyzeTimetable(data,slots,grid);
       if(!result.ok){URL.revokeObjectURL(url);setError(result.reason==='start'?scrolled:failure);return;}
       const previous=preview?.previous??[...selected];
-      setPreview({url,name:file.name,previous,busy:result.busy.length});
+      setPreview({url,name:file.name,previous,busyCount:result.busy.length});
       onApply(result.available);
     } catch {
       URL.revokeObjectURL(url);
@@ -50,6 +50,7 @@ export default function TimetableImageImport({slots,selected,onApply}:{slots:Slo
     if(!preview)return;
     onApply(preview.previous);setPreview(null);setError('');input.current?.focus();
   }
+  const uploadDisabled=busy||!slots.length||!grid;
   return <div className="timetable-import" aria-busy={busy}>
     <h3>이미지로 빠르게 채우기</h3><p className="help" id={`${id}-help`}>시간표 앱 캡처에서 수업을 찾아 비는 교시를 채웁니다. 이미지는 서버에 전송되지 않습니다.</p>
     <label htmlFor={`${id}-grid`}>이미지 시간 눈금</label>
@@ -59,16 +60,16 @@ export default function TimetableImageImport({slots,selected,onApply}:{slots:Slo
       <option value="period">교시형 · 1교시부터 한 줄에 1교시</option>
     </select>
     <p className="help" id={`${id}-grid-help`}>이미지의 세로 시간 눈금에 맞춰 형식을 먼저 선택한 뒤 업로드해주세요.</p>
-    <label className={`button image-upload${busy||!slots.length||!grid?' is-disabled':''}`}>
+    <label className={`button image-upload${uploadDisabled?' is-disabled':''}`}>
       <span>{busy?'이미지 분석 중…':'시간표 이미지 업로드'}</span>
-      <input ref={input} type="file" accept="image/png,image/jpeg,image/webp" disabled={busy||!slots.length||!grid} aria-describedby={`${id}-help ${id}-grid-help${error?` ${id}-error`:''}`} aria-invalid={Boolean(error)} onChange={e=>{void choose(e.target.files?.[0]);e.target.value='';}}/>
+      <input ref={input} type="file" accept="image/png,image/jpeg,image/webp" disabled={uploadDisabled} aria-describedby={`${id}-help ${id}-grid-help${error?` ${id}-error`:''}`} aria-invalid={Boolean(error)} onChange={e=>{void choose(e.target.files?.[0]);e.target.value='';}}/>
     </label>
     {error&&<p className="error-message" id={`${id}-error`} role="alert">{error}</p>}
     {preview&&<div className="timetable-import-result">
       <img src={preview.url} alt="선택한 시간표 이미지 미리보기"/>
       <div>
         <p className="break-word">{preview.name}</p>
-        <p className="help" role="status">수업이 있는 {preview.busy}개 교시를 빼고 나머지를 채웠어요. 아래 시간표를 확인해 직접 수정하고 저장해주세요.</p>
+        <p className="help" role="status">수업이 있는 {preview.busyCount}개 교시를 빼고 나머지를 채웠어요. 아래 시간표를 확인해 직접 수정하고 저장해주세요.</p>
         <button type="button" className="text-link" onClick={cancel}>적용 취소</button>
       </div>
     </div>}

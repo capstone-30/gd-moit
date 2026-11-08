@@ -1,17 +1,15 @@
 'use client';
-import Popup from '../components/popup';
-import {useContext,useState} from 'react';
-import {api,loadAvailabilityContext,useData,useApiData,usePaginatedData,PageButtons,Form,Heading,LoadFeedback,Slots,ProfileText,type Config,type Me,type Profile,type Availability} from '../components/client';
+import {useState} from 'react';
+import {api,loadAvailabilityContext,useData,usePaginatedData,PageButtons,Form,Heading,LoadFeedback,ProfileText,type Config,type Me,type Profile} from '../components/client';
 import AccountControls from '../components/account-controls';
-import ProfileCards,{CloseProfileCard} from '../components/profile-cards';
+import ProfileCards from '../components/profile-cards';
 import ProfileInterests from '../components/profile-interests';
-import TimetableImageImport from '../components/timetable-image-import';
-import {reusableSlots,type SavedAvailability} from '../components/availability';
+import AvailabilityForm from '../components/availability-form';
 export default function ProfilePage(){
   const state=useData(loadAvailabilityContext),d=state.data;
   const [availabilityDirty,setAvailabilityDirty]=useState(false),[availabilityReset,setAvailabilityReset]=useState(0),[availabilityBusy,setAvailabilityBusy]=useState(false);
   return <div className="profile-page"><Heading title="프로필"/><LoadFeedback state={state}/>{d&&<><div className="profile-account-summary"><p>{d.c.school?.name}</p><p className="help break-word">{d.me.email}</p></div><ProfileCards cards={[
-    {id:'availability',label:'가능 시간',dirty:availabilityDirty,busy:availabilityBusy,onDiscard:()=>{setAvailabilityDirty(false);setAvailabilityReset(n=>n+1);},content:<section className="detail-section"><h2>학기 가능 시간</h2>{d.c.term?<AvailabilityForm key={JSON.stringify([d.c.term,d.times,availabilityReset])} term={d.c.term} times={d.times} reload={state.reload} onDirtyChange={setAvailabilityDirty} onBusyChange={setAvailabilityBusy}/>:<p>학기가 아직 설정되지 않았습니다. 설정되면 여기에서 시간을 등록할 수 있어요.</p>}</section>},
+    {id:'availability',label:'가능 시간',dirty:availabilityDirty,busy:availabilityBusy,onDiscard:()=>{setAvailabilityDirty(false);setAvailabilityReset(n=>n+1);},content:<section className="detail-section"><h2>학기 가능 시간</h2>{d.c.term?<AvailabilityForm key={JSON.stringify([d.c.term,d.times,availabilityReset])} term={d.c.term} times={d.times} reload={state.reload} dirty={availabilityDirty} busy={availabilityBusy} onDirtyChange={setAvailabilityDirty} onBusyChange={setAvailabilityBusy}/>:<p>학기가 아직 설정되지 않았습니다. 설정되면 여기에서 시간을 등록할 수 있어요.</p>}</section>},
     {id:'optional-profile',label:'내 정보',content:<section className="detail-section"><h2>선택 프로필</h2><p className="help">입력하지 않아도 모임을 이용할 수 있어요. 학과·입학 연도·관심 주제만 참여자에게 공개하며, 표시 이름은 나에게만 보입니다.</p><ProfileForm key={JSON.stringify([d.me.displayName,d.me.department,d.me.entryYear,d.me.interests,d.me.optionalProfileConsent])} me={d.me} c={d.c} reload={state.reload}/></section>},
     {id:'blocked-users',label:'차단',content:<Blocks/>},
     {id:'account',label:'계정',content:<AccountControls/>},
@@ -24,29 +22,4 @@ function ProfileForm({me,c,reload}:{me:Me,c:Config,reload:()=>void}){
 function Blocks(){
   const state=usePaginatedData<{userId:string,profile:Profile}>('me/blocks');
   return <section className="detail-section"><h2>차단 관리</h2><p className="help">차단한 사용자를 확인하고 다시 모임을 볼 수 있도록 해제할 수 있어요.</p><LoadFeedback state={state}/>{state.data?.data.length===0&&<div className="profile-empty"><h3>차단한 사용자가 없어요</h3><p className="help">모임 상세의 안전 메뉴에서 사용자를 차단할 수 있어요.</p></div>}{state.data?.data.map((b,i)=><div className="profile-block-row" key={b.userId}><p>차단 사용자 {(state.pages.length-1)*20+i+1} · <ProfileText profile={b.profile}/></p><Form label="차단 해제" submit={async()=>{await api(`me/blocks/${b.userId}`,{method:'DELETE'});state.reload();}}><span className="help">해제하면 상대 모임이 다시 표시됩니다.</span></Form></div>)}<div className="form-actions"><PageButtons {...state} nextCursor={state.data?.nextCursor}/></div></section>;
-}
-
-function AvailabilityForm({term,times,reload,onDirtyChange,onBusyChange}:{term:NonNullable<Config['term']>,times:Availability|null,reload:()=>void,onDirtyChange:(dirty:boolean)=>void,onBusyChange:(busy:boolean)=>void}) {
-  const [selected,setSelected]=useState(times?.slots??[]),[imported,setImported]=useState<{name:string,skipped:number}|null>(null);
-  const [dirty,setLocalDirty]=useState(false),[busy,setBusy]=useState(false);
-  // 다른 학기를 불러오면 이미지 적용을 새로 시작해, 이미지의 적용 취소가 불러온 학기 시간까지 되돌리지 않게 한다.
-  const [imageReset,setImageReset]=useState(0);
-  function setDirty(value:boolean){setLocalDirty(value);onDirtyChange(value);}
-  const closeCard=useContext(CloseProfileCard);
-  function select(slots:number[]){setSelected(slots);setDirty(true);}
-  const history=useApiData<SavedAvailability[]>('me/availability'),sources=history.data?.data.filter(t=>t.termId!==term.id)??[];
-  return <Form dirtyGuard dirty={dirty} onDirtyChange={setDirty} onBusy={value=>{setBusy(value);onBusyChange(value);}} successMessage="가능 시간을 저장했어요." label="변경 사항 저장" submit={async()=>{await api(`me/availability/${term.id}`,{method:'PUT',body:{slots:selected}});setDirty(false);closeCard();reload();}}>
-    <p className="profile-save-status" role="status">{busy?'저장 중…':dirty?'저장하지 않은 변경사항':times?.registered?'✓ 저장됨':'아직 저장하지 않았어요'}</p>
-    <p className="help">{term.startsOn} ~ {term.endsOn} · {times?.registered?'등록한 시간을 모임마다 재사용합니다.':'아직 시간을 등록하지 않았습니다.'}</p>
-    <Popup className="profile-import" title="이미지·다른 학기에서 불러오기">
-    <LoadFeedback state={history}/>
-    {sources.length>0?<><label htmlFor="source-term">다른 학기 시간 불러오기</label><select id="source-term" defaultValue="" onChange={e=>{
-      const source=sources.find(t=>t.termId===e.target.value);if(!source)return;
-      const slots=reusableSlots(source,term.slots);select(slots);setImported({name:source.name,skipped:source.slots.length-slots.length});setImageReset(n=>n+1);
-    }}><option value="" disabled>불러올 학기를 선택하세요</option>{sources.map(t=><option key={t.termId} value={t.termId}>{t.name} ({t.startsOn} ~ {t.endsOn})</option>)}</select><p className="help">보관 기간이 남은 내 시간만 표시합니다. 요일·교시와 시작·종료 시간이 같은 시간만 불러옵니다. 현재 선택을 대체하며 저장 전까지 원본과 모임은 변경되지 않습니다.</p></>:history.data&&<p className="help">불러올 다른 학기 시간이 없습니다.</p>}
-    {imported&&<p role="status">{imported.name} 시간을 불러왔습니다. 제외된 교시 {imported.skipped}개. 아래 선택을 검토한 뒤 저장해주세요.</p>}
-    <TimetableImageImport key={imageReset} slots={term.slots} selected={selected} onApply={slots=>{select(slots);setImported(null);}}/>
-    </Popup>
-    <Slots slots={term.slots} selected={selected} onSelectedChange={select}/>
-  </Form>;
 }

@@ -1,4 +1,5 @@
 import Popup,{ConfirmDialog} from '../app/components/popup';
+import AvailabilityForm from '../app/components/availability-form';
 import {Slots,loadAccountContext} from '../app/components/client';
 import {LoadFeedback} from '../app/components/client';
 import {PageButtons} from '../app/components/client';
@@ -18,6 +19,19 @@ import {reusableSlots,type SavedAvailability} from '../app/components/availabili
 import {analyzeTimetable} from '../app/components/timetable-image';
 import {createElement,type ComponentProps} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
+
+test('가능 시간 폼은 부모의 미저장·저장 중 상태와 저장된 선택을 표시한다',()=>{
+  const props={term:{id:'term',startsOn:'2026-09-01',endsOn:'2026-12-31',slots:[{slot:101,startsAt:'09:30:00',endsAt:'10:20:00'}]},times:{registered:true,slots:[101]},reload:()=>{},onDirtyChange:()=>{},onBusyChange:()=>{}};
+  const render=(dirty:boolean,busy:boolean)=>renderToStaticMarkup(createElement(AvailabilityForm,{...props,dirty,busy}));
+  const saved=render(false,false);
+  assert.match(saved,/✓ 저장됨/);
+  assert.match(saved,/<input[^>]*aria-label="월요일 1교시[^>]*checked/);
+  const dirty=render(true,false);
+  assert.match(dirty,/저장하지 않은 변경사항/);
+  assert.match(dirty,/변경한 내용이 있습니다/);
+  const saving=render(true,true);
+  assert.match(saving,/저장 중…/);
+});
 
 test('함께 가능한 시간은 같은 시간표에 공통 교시만 읽기 전용으로 표시한다',()=>{
   const termSlots=[{slot:101,startsAt:'09:30:00',endsAt:'10:20:00'},{slot:102,startsAt:'10:30:00',endsAt:'11:20:00'},{slot:201,startsAt:'09:30:00',endsAt:'10:20:00'}];
