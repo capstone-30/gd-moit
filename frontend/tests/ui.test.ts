@@ -1,4 +1,5 @@
-import Popup from '../app/components/popup';
+import Popup,{ConfirmDialog} from '../app/components/popup';
+import AvailabilityForm from '../app/components/availability-form';
 import {Slots,loadAccountContext} from '../app/components/client';
 import {LoadFeedback} from '../app/components/client';
 import {PageButtons} from '../app/components/client';
@@ -14,9 +15,23 @@ import assert from 'node:assert/strict';
 import {dateRange} from '../app/components/calendar';
 import {slotMatchesDate} from '../../shared/date';
 import {api,RequestError,cursorQuery} from '../app/components/api';
-import {reusableSlots,mockImageAvailability,type SavedAvailability} from '../app/components/availability';
+import {reusableSlots,type SavedAvailability} from '../app/components/availability';
+import {analyzeTimetable} from '../app/components/timetable-image';
 import {createElement,type ComponentProps} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
+
+test('가능 시간 폼은 부모의 미저장·저장 중 상태와 저장된 선택을 표시한다',()=>{
+  const props={term:{id:'term',startsOn:'2026-09-01',endsOn:'2026-12-31',slots:[{slot:101,startsAt:'09:30:00',endsAt:'10:20:00'}]},times:{registered:true,slots:[101]},reload:()=>{},onDirtyChange:()=>{},onBusyChange:()=>{}};
+  const render=(dirty:boolean,busy:boolean)=>renderToStaticMarkup(createElement(AvailabilityForm,{...props,dirty,busy}));
+  const saved=render(false,false);
+  assert.match(saved,/✓ 저장됨/);
+  assert.match(saved,/<input[^>]*aria-label="월요일 1교시[^>]*checked/);
+  const dirty=render(true,false);
+  assert.match(dirty,/저장하지 않은 변경사항/);
+  assert.match(dirty,/변경한 내용이 있습니다/);
+  const saving=render(true,true);
+  assert.match(saving,/저장 중…/);
+});
 
 test('함께 가능한 시간은 같은 시간표에 공통 교시만 읽기 전용으로 표시한다',()=>{
   const termSlots=[{slot:101,startsAt:'09:30:00',endsAt:'10:20:00'},{slot:102,startsAt:'10:30:00',endsAt:'11:20:00'},{slot:201,startsAt:'09:30:00',endsAt:'10:20:00'}];
@@ -199,12 +214,81 @@ test('주관 모임 카드는 역할별 목적지로 연결하고 제출 현황�
   assert.match(render({institution:true,meeting:{...meeting,date:'2026-10-19',slot:101,place:'공개 장소'}}),/2026-10-19/);
 });
 
-test('이미지 목업은 고정 예시 수업을 제외한 운영 교시만 선택하고 원본을 보존',()=>{
-  const slots=[101,102,103,112,203,204,205,512].map(slot=>({slot,startsAt:'09:30:00',endsAt:'10:20:00'}));
+function timetableImage({dark=false,labels=true,blocks=[] as {day:number;from:number;to:number;color:number[]}[]}={}) {
+  // 시간 열 40px·요일 열 150px×5·머리글 40px·1시간 100px(9시~21시) 합성 캡처
+  const width=40+150*5,height=40+100*12,data=new Uint8ClampedArray(width*height*4);
+  const bg=dark?18:255,line=dark?48:232;
+  const paint=(x:number,y:number,c:number[])=>{const i=(y*width+x)*4;data[i]=c[0];data[i+1]=c[1];data[i+2]=c[2];data[i+3]=255;};
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++)paint(x,y,[bg,bg,bg]);
+  for(let d=0;d<=5;d++)for(let y=0;y<height;y++)paint(Math.min(width-1,40+150*d),y,[line,line,line]);
+  for(let h=0;h<12;h++)for(let x=0;x<width;x++)paint(x,40+100*h,[line,line,line]);
+  // 요일 머리글 글자 자리. 없으면 스크롤해 첫 줄 위에 빈 줄 일부만 보이는 캡처가 된다.
+  if(labels)for(let d=0;d<5;d++)for(let y=12;y<28;y++)for(let x=40+150*d+65;x<40+150*d+85;x++)paint(x,y,dark?[230,230,230]:[60,60,60]);
+  for(const b of blocks){
+    const top=40+Math.round((b.from-9)*100),bottom=40+Math.round((b.to-9)*100);
+    for(let y=top;y<bottom;y++)for(let x=40+150*(b.day-1)+2;x<40+150*b.day-1;x++)paint(x,y,(x+y)%9===0?[255,255,255]:b.color);
+  }
+  return {width,height,data};
+}
+
+test('시간표 이미지 분석은 수업 블록과 10분 이상 겹치는 교시만 제외하고 다크 모드도 인식',()=>{
+  const pad=(n:number)=>String(n).padStart(2,'0');
+  const slots=[1,2,3,4,5].flatMap(day=>Array.from({length:12},(_,i)=>({slot:day*100+i+1,startsAt:`${pad(9+i)}:30:00`,endsAt:`${pad(10+i)}:20:00`})));
   const original=structuredClone(slots);
-  assert.deepEqual(mockImageAvailability(slots),[103,112,205,512]);
+  const blocks=[{day:1,from:9.5,to:11+20/60,color:[240,135,122]},{day:3,from:14.5,to:15+20/60,color:[127,209,191]},{day:5,from:18.25,to:20,color:[235,196,106]}];
+  for(const dark of [false,true]) {
+    const result=analyzeTimetable(timetableImage({dark,blocks}),slots,'hour');
+    assert.ok(result.ok);
+    assert.equal(result.blocks,3);
+    assert.equal(result.grid,'hour');
+    assert.deepEqual(result.busy,[101,102,306,510,511]);
+    assert.equal(result.available.length,60-5);
+  }
   assert.deepEqual(slots,original);
-  assert.deepEqual(mockImageAvailability([]),[]);
+});
+
+test('정각 수업도 선택한 시간형 눈금으로 해석해 겹치는 첫 교시를 제외한다',()=>{
+  const slots=[101,102,103,104].map((slot,i)=>({slot,startsAt:`${9+i}:30:00`,endsAt:`${10+i}:20:00`}));
+  const image=timetableImage({blocks:[{day:1,from:10,to:12,color:[240,135,122]}]});
+  const hourly=analyzeTimetable(image,slots,'hour');
+  const periods=analyzeTimetable(image,slots,'period');
+  assert.ok(hourly.ok&&periods.ok);
+  assert.deepEqual(hourly.busy,[101,102,103]);
+  assert.deepEqual(hourly.available,[104]);
+  assert.deepEqual(periods.busy,[102,103]);
+});
+
+test('교시 단위 격자·연한 블록 캡처는 블록이 걸친 교시를 그대로 제외',()=>{
+  // 시간 열 135px·요일 열 153px×5·머리글 60px·1교시 170px, 옅은 격자선·파스텔 블록과 왼쪽 진한 막대, 아래가 잘린 블록
+  const time=135,col=153,head=60,row=170,width=time+col*5,height=head+row*10+60,data=new Uint8ClampedArray(width*height*4);
+  const paint=(x:number,y:number,c:number[])=>{const i=(y*width+x)*4;data[i]=c[0];data[i+1]=c[1];data[i+2]=c[2];data[i+3]=255;};
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++)paint(x,y,[255,255,255]);
+  for(let d=0;d<=5;d++)for(let y=0;y<height;y++)paint(Math.min(width-1,time+col*d),y,[250,250,250]);
+  for(let r=0;r<=10;r++)for(let x=0;x<width;x++)paint(x,head+row*r,[250,250,250]);
+  for(let d=0;d<5;d++)for(let y=20;y<40;y++)for(let x=time+col*d+65;x<time+col*d+85;x++)paint(x,y,[150,150,150]);
+  const block=(day:number,from:number,to:number,fill:number[],bar:number[])=>{
+    for(let y=head+row*(from-1);y<Math.min(height,head+row*to);y++)for(let x=time+col*(day-1);x<time+col*day;x++)paint(x,y,x<time+col*(day-1)+4?bar:fill);
+  };
+  block(1,6,7,[250,238,253],[200,167,219]);
+  block(2,5,6,[233,251,234],[90,190,100]);
+  block(2,7,8,[255,253,231],[230,200,40]);
+  block(5,9,12,[235,247,255],[60,160,220]);
+  const pad=(n:number)=>String(n).padStart(2,'0');
+  const slots=[1,2,3,4,5].flatMap(day=>Array.from({length:12},(_,i)=>({slot:day*100+i+1,startsAt:`${pad(9+i)}:30:00`,endsAt:`${pad(10+i)}:20:00`})));
+  const result=analyzeTimetable({width,height,data},slots,'period');
+  assert.ok(result.ok);
+  assert.equal(result.grid,'period');
+  assert.deepEqual(result.busy,[106,107,205,206,207,208,509,510,511]);
+});
+
+test('시간표 이미지 분석은 시간표가 아니거나 수업 블록이 없는 이미지를 거부',()=>{
+  const slots=[{slot:101,startsAt:'09:30:00',endsAt:'10:20:00'}];
+  assert.deepEqual(analyzeTimetable(timetableImage(),slots,'hour'),{ok:false,reason:'blocks'});
+  assert.deepEqual(analyzeTimetable(timetableImage({labels:false,blocks:[{day:1,from:10,to:12,color:[240,135,122]}]}),slots,'hour'),{ok:false,reason:'start'});
+  const noise={width:300,height:300,data:Uint8ClampedArray.from({length:300*300*4},(_,i)=>i%4===3?255:(i*7919)%256)};
+  assert.equal(analyzeTimetable(noise,slots,'hour').ok,false);
+  const plain={width:300,height:300,data:new Uint8ClampedArray(300*300*4).fill(255)};
+  assert.equal(analyzeTimetable(plain,slots,'hour').ok,false);
 });
 
 test('커서는 빈 값과 예약 문자를 보존하고 다른 검색 조건과 결합한다',()=>{
@@ -235,6 +319,15 @@ test('팝업은 접근 가능한 제목·열기·닫기 버튼을 제공하고 �
   assert.ok(html.includes(`<h2 id="${titleId}">모임 신고</h2>`));
   assert.match(html,/>닫기<\/button>/);
   assert.match(html,/신고 내용/);
+  assert.doesNotMatch(html,/<dialog[^>]* open/);
+});
+
+test('변경 폐기 확인 창은 제목·안내와 삭제·계속 변경 버튼을 제공한다',()=>{
+  const html=renderToStaticMarkup(createElement(ConfirmDialog,{open:false,title:'변경한 내용을 삭제하겠습니까?',message:'지금 돌아가면 변경한 내용이 모두 삭제됩니다.',confirmLabel:'삭제',cancelLabel:'계속 변경',onConfirm:()=>{},onCancel:()=>{}}));
+  assert.match(html,/<dialog[^>]*role="alertdialog"/);
+  assert.match(html,/<h2[^>]*>변경한 내용을 삭제하겠습니까\?<\/h2>/);
+  assert.match(html,/지금 돌아가면 변경한 내용이 모두 삭제됩니다\./);
+  assert.ok(html.indexOf('>삭제</button>')<html.indexOf('>계속 변경</button>'));
   assert.doesNotMatch(html,/<dialog[^>]* open/);
 });
 

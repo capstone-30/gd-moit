@@ -58,7 +58,7 @@ WATCHPACK_POLLING=true npm run dev -- --hostname 127.0.0.1 --webpack
 
 학교 이메일로 로그인한 뒤 프로필에서 가능 시간을 등록하고, 모임 찾기 또는 모임 열기로 시작한다. 참여 이후에는 모임 관리에서 활동한다.
 
-화면 경로·유형별 이용 기능은 [학생 내비게이션](docs/specs/student.md#내비게이션프로필), 이미지 업로드 예시는 [시간표 목업](docs/specs/student.md#시간표-목업), 배정된 활동의 제출 방법은 [서류 제출·열람](docs/specs/institution.md#서류-제출열람)을 참고한다.
+화면 경로·유형별 이용 기능은 [학생 내비게이션](docs/specs/student.md#내비게이션프로필), 이미지 업로드 예시는 [시간표·이미지 불러오기](docs/specs/student.md#시간표이미지-불러오기), 배정된 활동의 제출 방법은 [서류 제출·열람](docs/specs/institution.md#서류-제출열람)을 참고한다.
 
 ### 대학 담당자
 
