@@ -36,10 +36,11 @@ export function PopupDialog({title,open,onClose,children,actions}:{title:string;
 }
 
 export function ConfirmDialog({open,title,message,confirmLabel,cancelLabel,onConfirm,onCancel}:{open:boolean;title:string;message:string;confirmLabel:string;cancelLabel:string;onConfirm:()=>void;onCancel:()=>void}) {
-  const dialog=useRef<HTMLDialogElement>(null),titleId=useId(),messageId=useId();
+  const dialog=useRef<HTMLDialogElement>(null),cancel=useRef<HTMLButtonElement>(null),titleId=useId(),messageId=useId();
+  // 확인 창은 항상 마운트돼 autoFocus가 처음 한 번만 동작한다. 열 때마다 취소 버튼에 포커스를 둬 Enter로 위험 동작이 실행되지 않게 한다.
   useEffect(()=>{
     const node=dialog.current;
-    if(open&&!node?.open)node?.showModal();
+    if(open&&!node?.open){node?.showModal();cancel.current?.focus();}
     if(!open&&node?.open)node.close();
   },[open]);
   return <dialog ref={dialog} className="confirm-dialog" role="alertdialog" aria-labelledby={titleId} aria-describedby={messageId} onKeyDown={event=>escape(event,onCancel)} onCancel={event=>{event.preventDefault();event.stopPropagation();onCancel();}}>
@@ -47,7 +48,7 @@ export function ConfirmDialog({open,title,message,confirmLabel,cancelLabel,onCon
     <p id={messageId}>{message}</p>
     <div className="confirm-actions">
       <button type="button" className="button danger" onClick={onConfirm}>{confirmLabel}</button>
-      <button type="button" className="button" onClick={onCancel} autoFocus>{cancelLabel}</button>
+      <button ref={cancel} type="button" className="button" onClick={onCancel}>{cancelLabel}</button>
     </div>
   </dialog>;
 }
