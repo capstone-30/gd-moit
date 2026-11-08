@@ -51,19 +51,18 @@ export default function TimetableImageImport({slots,selected,onApply}:{slots:Slo
     onApply(preview.previous);setPreview(null);setError('');input.current?.focus();
   }
   return <div className="timetable-import" aria-busy={busy}>
-    <div className="timetable-import-heading"><div><h3>이미지로 빠르게 채우기</h3><p className="help" id={`${id}-help`}>시간표 앱 캡처에서 수업을 찾아 비는 교시를 채웁니다. 이미지는 서버에 전송되지 않습니다.</p></div>
-      <label className={`button image-upload${busy||!slots.length||!grid?' is-disabled':''}`}>
-        <span>{busy?'이미지 분석 중…':'시간표 이미지 업로드'}</span>
-        <input ref={input} type="file" accept="image/png,image/jpeg,image/webp" disabled={busy||!slots.length||!grid} aria-describedby={`${id}-help${error?` ${id}-error`:''}`} aria-invalid={Boolean(error)} onChange={e=>{void choose(e.target.files?.[0]);e.target.value='';}}/>
-      </label>
-    </div>
+    <h3>이미지로 빠르게 채우기</h3><p className="help" id={`${id}-help`}>시간표 앱 캡처에서 수업을 찾아 비는 교시를 채웁니다. 이미지는 서버에 전송되지 않습니다.</p>
     <label htmlFor={`${id}-grid`}>이미지 시간 눈금</label>
     <select id={`${id}-grid`} value={grid} disabled={busy} onChange={event=>{if(preview)cancel();setGrid(event.target.value as TimetableGrid|'');}}>
       <option value="" disabled>시간표 형식을 선택해주세요</option>
       <option value="hour">시간형 · 9시부터 한 줄에 1시간</option>
       <option value="period">교시형 · 1교시부터 한 줄에 1교시</option>
     </select>
-    <p className="help">이미지의 세로 시간 눈금에 맞춰 형식을 선택한 뒤 업로드해주세요.</p>
+    <p className="help" id={`${id}-grid-help`}>이미지의 세로 시간 눈금에 맞춰 형식을 먼저 선택한 뒤 업로드해주세요.</p>
+    <label className={`button image-upload${busy||!slots.length||!grid?' is-disabled':''}`}>
+      <span>{busy?'이미지 분석 중…':'시간표 이미지 업로드'}</span>
+      <input ref={input} type="file" accept="image/png,image/jpeg,image/webp" disabled={busy||!slots.length||!grid} aria-describedby={`${id}-help ${id}-grid-help${error?` ${id}-error`:''}`} aria-invalid={Boolean(error)} onChange={e=>{void choose(e.target.files?.[0]);e.target.value='';}}/>
+    </label>
     {error&&<p className="error-message" id={`${id}-error`} role="alert">{error}</p>}
     {preview&&<div className="timetable-import-result">
       <img src={preview.url} alt="선택한 시간표 이미지 미리보기"/>
