@@ -1,10 +1,10 @@
 import Popup,{ConfirmDialog} from '../app/components/popup';
 import AvailabilityForm from '../app/components/availability-form';
-import {Slots,loadAccountContext} from '../app/components/client';
+import {Slots,loadAccountContext,Feedback,type MeetingSummary} from '../app/components/client';
 import {LoadFeedback} from '../app/components/client';
 import {PageButtons} from '../app/components/client';
 import {navigationLinks} from '../app/components/navigation';
-import {Participant} from '../app/components/meeting';
+import {Participant,JoinGuidance} from '../app/components/meeting';
 import {MeetingCard} from '../app/components/meeting-card';
 import {HostedMeetingCard} from '../app/components/hosted-meetings';
 import {SlotOptions} from '../app/components/slot-options';
@@ -369,4 +369,22 @@ test('공통 일정 입력은 날짜 범위·요일 필터와 화면별 초기�
   assert.match(hosted,/value="2026-10-19"/);
   assert.match(hosted,/<option value="101" selected=""/);
   assert.doesNotMatch(hosted,/화요일/);
+});
+
+
+test('참여 안내는 정원·조율·확정 시간별 다음 행동을 제공한다',()=>{
+  const meeting={capacity:3,memberCount:2,state:'undecided',canJoin:false,overlapsMyAvailability:false} as MeetingSummary;
+  const render=(changes:Partial<MeetingSummary>)=>renderToStaticMarkup(createElement(JoinGuidance,{meeting:{...meeting,...changes}}));
+  assert.match(render({memberCount:3}),/정원이 모두/);
+  assert.match(render({state:'proposing'}),/조율하고 있어/);
+  const unavailable=render({state:'confirmed'});
+  assert.match(unavailable,/href="\/profile#availability"/);
+  assert.match(render({state:'confirmed',overlapsMyAvailability:true}),/href="\/meetings"/);
+  assert.doesNotMatch(render({canJoin:true}),/<a/);
+});
+
+test('인증번호 오류는 로그인 화면으로 되돌리지 않고 세션 만료만 로그인으로 연결한다',()=>{
+  const render=(code:string)=>renderToStaticMarkup(createElement(Feedback,{error:new RequestError('인증 실패',401,code)}));
+  assert.doesNotMatch(render('OTP_INVALID'),/href="\/login"/);
+  assert.match(render('UNAUTHENTICATED'),/href="\/login"/);
 });

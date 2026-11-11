@@ -20,5 +20,5 @@ const icons={
 };
 export default function Navigation({institution=false}:{institution?:boolean}) {
   const pathname=usePathname();
-  return <nav className="bottom-navigation" aria-label="주 메뉴"><div className="bottom-navigation-inner">{navigationLinks(pathname,institution).map(({href,label,icon,active})=><a key={href} href={href} aria-current={active?'page':undefined}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{icons[icon]}</svg><span>{label}</span></a>)}</div></nav>;
+  return <nav className={`bottom-navigation${institution?' institution-navigation':''}`} aria-label="주 메뉴"><div className="bottom-navigation-inner">{navigationLinks(pathname,institution).map(({href,label,icon,active})=><a key={href} href={href} aria-label={label} aria-current={active?'page':undefined}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{icons[icon]}</svg><span className="navigation-label-full">{label}</span>{institution&&<span className="navigation-label-compact" aria-hidden="true">{label==='프로젝트 생성'?'생성':label==='프로젝트 관리'?'관리':label}</span>}</a>)}</div></nav>;
 }

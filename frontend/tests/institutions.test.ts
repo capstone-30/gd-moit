@@ -66,7 +66,7 @@ test('템플릿 기본 서류와 현재 요구에 따른 완료 상태를 구분
 
 test('학생 제출 양식은 비활성 서류를 숨기고 입력을 보존하며 제출을 막는다',()=>{
   const meeting={id:'m',title:'활동',date:null,slot:null,place:null,placeId:null,capacity:2,memberCount:2,isMember:true,
-    term:{id:'t',startsOn:'2026-09-01',endsOn:'2026-12-31',slots:[]},etag:'version',canSchedule:true,canSubmit:false,expiresAt:'2026-12-31',
+    term:{id:'t',startsOn:'2026-09-01',endsOn:'2026-12-31',slots:[]},etag:'version',canSchedule:true,canSubmit:true,expiresAt:'2026-12-31',
     myDocuments:{activitySubmitted:true,expensesSubmitted:true,content:'기존 활동',outcome:'기존 성과',expenses:[{date:'2026-10-25',description:'재료',amount:1000}],submittedAt:'2026-10-25',updatedAt:'2026-10-25',etag:'v'}};
   for(const documentRequirements of [{activity:true,expenses:false},{activity:false,expenses:true}]) {
     const html=renderToStaticMarkup(createElement(ReportForm,{meeting:{...meeting,documentRequirements},reload:()=>{}}));
@@ -80,11 +80,16 @@ test('학생 제출 양식은 비활성 서류를 숨기고 입력을 보존하�
     assert.match(html,/name="content">기존 활동<\/textarea>/);
     assert.match(html,/name="outcome">기존 성과<\/textarea>/);
     assert.match(html,/value="재료"/);
-    assert.match(html,/<form[^>]*><fieldset[^>]*disabled=""/);
+    assert.doesNotMatch(html,/<form[^>]*><fieldset[^>]*disabled=""/);
   }
   const none=renderToStaticMarkup(createElement(ReportForm,{meeting:{...meeting,documentRequirements:{activity:false,expenses:false}},reload:()=>{}}));
   assert.match(none,/현재 제출을 요구하는 서류가 없습니다/);
-  assert.equal((none.match(/<fieldset[^>]*hidden="" disabled=""/g)??[]).length,2);
+  assert.doesNotMatch(none,/<form|<textarea|type="submit"/);
+  for(const date of [null,'2026-12-01']) {
+    const waiting=renderToStaticMarkup(createElement(ReportForm,{meeting:{...meeting,date,slot:date?101:null,place:date?'도서관':null,canSubmit:false,documentRequirements:{activity:true,expenses:false}},reload:()=>{}}));
+    assert.match(waiting,date?/활동일부터 서류를 제출/:/일정과 장소를 먼저 설정/);
+    assert.doesNotMatch(waiting,/<form|<textarea|type="submit"/);
+  }
 });
 
 test('서류 제출 공지는 요구 서류별 완료 상태와 담당자 전용 다운로드를 제공한다',()=>{

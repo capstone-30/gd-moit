@@ -63,7 +63,7 @@ export function CapacityDots({capacity,memberCount}:{capacity:number;memberCount
 export function Feedback({error}:{error?:Error}) {
   const feedback=useRef<HTMLDivElement>(null);
   useEffect(()=>{if(error)feedback.current?.focus();},[error]);
-  return error?<div ref={feedback} tabIndex={-1} role="alert" className="feedback error-message">{error.message}{error instanceof RequestError && error.status===401 && <> <a href="/login">로그인하기</a></>}</div>:null;}
+  return error?<div ref={feedback} tabIndex={-1} role="alert" className="feedback error-message">{error.message}{error instanceof RequestError && error.status===401 && error.code==='UNAUTHENTICATED' && <> <a href="/login">로그인하기</a></>}</div>:null;}
 export function Loading(){return <div className="loading-state" role="status"><p>잠시만 기다려주세요</p><div className="skeleton skeleton-title" aria-hidden="true"/><div className="skeleton" aria-hidden="true"/></div>;}
 export function Retry({error,reload}:{error?:Error,reload:()=>void}){return <><Feedback error={error}/>{error&&<button type="button" className="button" onClick={reload}>다시 불러오기</button>}</>;}
 export function LoadFeedback({state,hasData=Boolean(state.data)}:{state:{data?:unknown;error?:Error;loading:boolean;reload:()=>void};hasData?:boolean}) {

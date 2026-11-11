@@ -21,9 +21,9 @@ export default function MeetingList(){
           <Retry error={state.error} reload={state.reload}/>
           {state.loading&&<Loading/>}
           {!state.loading&&!state.error&&state.data&&<>
-            {state.data.data.length===0?<div className="empty-state"><span className="empty-mark" aria-hidden="true">{filtered?'⌕':'＋'}</span><h3>{filtered?'조건에 맞는 모임이 없어요':'아직 열린 모임이 없어요'}</h3><p>{filtered?'다른 유형을 선택하거나 전체 모임을 확인해보세요.':'하단의 모임 열기에서 첫 모임을 만들어보세요.'}</p>{filtered?<button className="button" onClick={()=>applyType('')}>전체 모임 보기</button>:null}</div>:
+            {state.data.data.length===0?<div className="empty-state"><span className="empty-mark" aria-hidden="true">{filtered?'⌕':'＋'}</span><h3>{filtered?'조건에 맞는 모임이 없어요':'아직 열린 모임이 없어요'}</h3><p>{filtered?'다른 유형을 선택하거나 전체 모임을 확인해보세요.':'관심 있는 주제로 첫 모임을 열어보세요.'}</p>{filtered?<button className="button" onClick={()=>applyType('')}>전체 모임 보기</button>:<a className="button primary" href="/meetings/new">모임 열기</a>}</div>:
             <ul className="meetings">{state.data.data.map(m=><MeetingCard key={m.id} meeting={m}/>)}</ul>}
-            <nav className="form-actions pagination" aria-label="모임 목록 페이지"><PageButtons {...state} nextCursor={state.data.nextCursor} labels={['← 이전','다음 →']}/></nav>
+            <nav className="form-actions pagination" aria-label="모임 목록 페이지"><PageButtons {...state} nextCursor={state.data.nextCursor} labels={['이전','다음']}/></nav>
           </>}
         </div>
         </div>
