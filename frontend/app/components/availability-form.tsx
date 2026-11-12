@@ -13,7 +13,7 @@ export default function AvailabilityForm({term,times,reload,dirty,busy,onDirtyCh
   const closeCard=useContext(CloseProfileCard);
   function select(slots:number[]){setSelected(slots);onDirtyChange(true);}
   const history=useApiData<SavedAvailability[]>('me/availability'),sources=history.data?.data.filter(t=>t.termId!==term.id)??[];
-  return <Form dirtyGuard dirty={dirty} onDirtyChange={onDirtyChange} onBusy={onBusyChange} successMessage="가능 시간을 저장했어요." label="변경 사항 저장" submit={async()=>{await api(`me/availability/${term.id}`,{method:'PUT',body:{slots:selected}});onDirtyChange(false);closeCard();reload();}}>
+  return <Form dirtyGuard dirty={dirty} onDirtyChange={onDirtyChange} onBusy={onBusyChange} successMessage="가능 시간을 저장했어요." label="변경 사항 저장" submit={async()=>{await api(`me/availability/${term.id}`,{method:'PUT',body:{slots:selected}});onDirtyChange(false);closeCard('가능 시간을 저장했어요.');reload();}}>
     <p className="profile-save-status" role="status">{busy?'저장 중…':dirty?'저장하지 않은 변경사항':times?.registered?'✓ 저장됨':'아직 저장하지 않았어요'}</p>
     <p className="help">{term.startsOn} ~ {term.endsOn} · {times?.registered?'등록한 시간을 모임마다 재사용합니다.':'아직 시간을 등록하지 않았습니다.'}</p>
     <Popup className="profile-import" title="이미지·다른 학기에서 불러오기">

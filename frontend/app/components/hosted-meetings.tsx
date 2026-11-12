@@ -262,7 +262,7 @@ export function ReportForm({meeting,reload}:{meeting:HostedMeeting;reload:()=>vo
   const [expenses,setExpenses]=useState((meeting.myDocuments?.expenses??[]).map(e=>({...e,amount:String(e.amount)})));
   function change(index:number,key:'date'|'description'|'amount',value:string) {setExpenses(rows=>rows.map((row,i)=>i===index?{...row,[key]:value}:row));}
   if(!meeting.documentRequirements.activity&&!meeting.documentRequirements.expenses)return <p className="muted">현재 제출을 요구하는 서류가 없습니다. 새 제출 안내는 공지사항에서 확인해주세요.</p>;
-  if(!meeting.canSubmit)return <div className="stack"><p>{!meeting.date||!meeting.slot||!meeting.place?'활동 일정과 장소를 먼저 설정해주세요.':'활동일부터 서류를 제출할 수 있어요.'}</p><p className="help">{meeting.date?`활동일: ${meeting.date}. `:''}{meeting.canSchedule?'위 활동 일정 설정에서 확인·수정할 수 있어요.':'설정된 활동 일정은 위 활동 안내에서 확인할 수 있어요.'}</p></div>;
+  if(!meeting.canSubmit)return <div className="stack"><p>{!meeting.date?'활동 일정과 장소를 먼저 설정해주세요.':'활동일부터 서류를 제출할 수 있어요.'}</p><p className="help">{meeting.date?`활동일: ${meeting.date}. `:''}{meeting.canSchedule?'위 활동 일정 설정에서 확인·수정할 수 있어요.':'설정된 활동 일정은 위 활동 안내에서 확인할 수 있어요.'}</p></div>;
   return <Form dirtyGuard label={meeting.myDocuments?'서류 수정 제출':'요구 서류 제출'} onConflict={reload} submit={async f=>{
     const {activity,expenses:requiresExpenses}=meeting.documentRequirements;
     try {

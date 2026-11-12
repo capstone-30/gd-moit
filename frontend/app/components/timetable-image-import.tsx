@@ -19,7 +19,7 @@ function readPixels(image:HTMLImageElement):Pixels {
 
 export default function TimetableImageImport({slots,selected,onApply}:{slots:Slot[];selected:number[];onApply:(slots:number[])=>void}) {
   const id=useId(),input=useRef<HTMLInputElement>(null),attempt=useRef(0);
-  const [preview,setPreview]=useState<{url:string;name:string;previous:number[];busyCount:number}|null>(null);
+  const [preview,setPreview]=useState<{url:string;name:string;previous:number[];applied:number[];busyCount:number}|null>(null);
   const [busy,setBusy]=useState(false),[error,setError]=useState('');
   const [grid,setGrid]=useState<TimetableGrid|''>('');
   useEffect(()=>()=>{attempt.current++;},[]);
@@ -39,7 +39,7 @@ export default function TimetableImageImport({slots,selected,onApply}:{slots:Slo
       const data=readPixels(image),result=analyzeTimetable(data,slots,grid);
       if(!result.ok){URL.revokeObjectURL(url);setError(result.reason==='start'?scrolled:failure);return;}
       const previous=preview?.previous??[...selected];
-      setPreview({url,name:file.name,previous,busyCount:result.busy.length});
+      setPreview({url,name:file.name,previous,applied:result.available,busyCount:result.busy.length});
       onApply(result.available);
     } catch {
       URL.revokeObjectURL(url);
@@ -48,7 +48,9 @@ export default function TimetableImageImport({slots,selected,onApply}:{slots:Slo
   }
   function cancel() {
     if(!preview)return;
-    onApply(preview.previous);setPreview(null);setError('');input.current?.focus();
+    // 이미지 적용 뒤 직접 바꾼 교시는 유지하고, 이미지가 정한 그대로인 교시만 적용 전으로 되돌린다.
+    const previous=new Set(preview.previous),applied=new Set(preview.applied),now=new Set(selected);
+    onApply(slots.map(s=>s.slot).filter(slot=>now.has(slot)!==applied.has(slot)?now.has(slot):previous.has(slot)));setPreview(null);setError('');input.current?.focus();
   }
   const uploadDisabled=busy||!slots.length||!grid;
   return <div className="timetable-import" aria-busy={busy}>
