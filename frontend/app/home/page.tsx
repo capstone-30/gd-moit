@@ -1,3 +1,4 @@
+export const metadata={title:'홈'};
 import '../components/home-dashboard.css';
 import {requireAccount} from '../components/server-session';
 import HomeDashboard from '../components/home-dashboard';

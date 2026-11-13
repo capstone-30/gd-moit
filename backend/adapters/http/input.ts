@@ -19,7 +19,10 @@ export function hostedProjectTitle(value:unknown) {
 export function hostedMeetingBatch(value:unknown) {
   const v=object(value,['meetings']);
   requireThat(Array.isArray(v.meetings)&&v.meetings.length>=1&&v.meetings.length<=20,400,'INVALID_INPUT');
-  return {meetings:v.meetings.map(hostedMeeting)};
+  return {meetings:v.meetings.map((meeting:unknown,index:number)=>{
+    try {return hostedMeeting(meeting);}
+    catch(error){if(error instanceof ApiError)error.row=index+1;throw error;}
+  })};
 }
 
 export function hostedMeeting(value:unknown) {

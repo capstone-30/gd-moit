@@ -42,6 +42,7 @@ test('기관 지표는 합성 데이터이며 평가 점수·고유 인원으로
 
 import {DocumentRequirementsSummary,Notices,ReportForm} from '../app/components/hosted-meetings';
 
+import {schoolDate} from '../app/components/calendar';
 import {documentsComplete} from '../../shared/activity-documents';
 import {hostedActivities} from '../../shared/hosted-activities';
 test('템플릿 기본 서류와 현재 요구에 따른 완료 상태를 구분한다',()=>{
@@ -80,6 +81,8 @@ test('학생 제출 양식은 비활성 서류를 숨기고 입력을 보존하�
     assert.match(html,/name="content">기존 활동<\/textarea>/);
     assert.match(html,/name="outcome">기존 성과<\/textarea>/);
     assert.match(html,/value="재료"/);
+    assert.ok(html.includes(`max="${schoolDate('UTC')}"`));
+    assert.match(html,/aria-describedby="expense-date-help"/);
     assert.doesNotMatch(html,/<form[^>]*><fieldset[^>]*disabled=""/);
   }
   const none=renderToStaticMarkup(createElement(ReportForm,{meeting:{...meeting,documentRequirements:{activity:false,expenses:false}},reload:()=>{}}));
