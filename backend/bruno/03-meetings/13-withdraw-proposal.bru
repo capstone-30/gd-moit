@@ -1,0 +1,25 @@
+meta {
+  name: Withdraw proposal
+  type: http
+  seq: 13
+}
+
+delete {
+  url: {{baseUrl}}/meetings/{{meetingId}}/proposals/{{proposalId}}
+  body: none
+  auth: none
+}
+
+headers {
+  If-Match: {{meetingEtag}}
+}
+
+script:post-response {
+  if (res.getStatus() >= 200 && res.getStatus() < 300) {
+    bru.setVar("meetingEtag", res.getHeader("etag"));
+  }
+}
+
+assert {
+  res.status: eq 204
+}

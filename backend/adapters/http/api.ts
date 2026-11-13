@@ -115,8 +115,12 @@ export const routes:[string,string,Handler,RouteOptions?][] = [
     const data=await meeting.createMeeting(db,actor,input.meetingCreate(b));
     return {data,status:201,headers:{Location:`/api/v1/meetings/${data.id}`,ETag:meeting.etag(data)}};
   },{paginated:true,filters:['type','membership']}],
-  ['meetings/:meetingId','GET',async({db,params,actor})=>{
+  ['meetings/:meetingId','GET DELETE',async({db,request,params,b,actor})=>{
+    if(request.method==='DELETE') {empty(b);await meeting.closeMeeting(db,actor,params.meetingId);return {status:204};}
     const data=await meeting.detail(db,actor,params.meetingId);return {data,headers:{ETag:meeting.etag(data)}};
+  }],
+  ['meetings/:meetingId/host','PUT',async({db,request,params,b,actor})=>{
+    const v=input.object(b,['userId']);const {data,etag}=await meeting.transferHost(db,actor,params.meetingId,input.uuid(v.userId),request.headers.get('if-match'));return {data,headers:{ETag:etag}};
   }],
   ['meetings/:meetingId/members/me','PUT DELETE',async({db,request,params,b,actor})=>{
     empty(b);if(request.method==='PUT') return {data:await meeting.join(db,actor,params.meetingId)};
@@ -127,6 +131,9 @@ export const routes:[string,string,Handler,RouteOptions?][] = [
   }],
   ['meetings/:meetingId/confirmation','PUT',coordinate],
   ['meetings/:meetingId/proposals','POST',coordinate],
+  ['meetings/:meetingId/proposals/:proposalId','DELETE',async({db,request,params,b,actor})=>{
+    empty(b);const {etag}=await meeting.withdrawProposal(db,actor,params.meetingId,params.proposalId,request.headers.get('if-match'));return {status:204,headers:{ETag:etag}};
+  }],
   ['meetings/:meetingId/proposals/:proposalId/acceptances/me','PUT',async({db,request,params,b,actor})=>{
     empty(b);const {data,etag}=await meeting.accept(db,actor,params.meetingId,params.proposalId,request.headers.get('if-match'));return {data,headers:{ETag:etag}};
   }],

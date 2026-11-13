@@ -1,0 +1,29 @@
+meta {
+  name: Transfer host
+  type: http
+  seq: 12
+}
+
+put {
+  url: {{baseUrl}}/meetings/{{meetingId}}/host
+  body: json
+  auth: none
+}
+
+headers {
+  If-Match: {{meetingEtag}}
+}
+
+body:json {
+  {"userId": "{{userId}}"}
+}
+
+script:post-response {
+  if (res.getStatus() >= 200 && res.getStatus() < 300) {
+    bru.setVar("meetingEtag", res.getHeader("etag"));
+  }
+}
+
+assert {
+  res.status: eq 200
+}

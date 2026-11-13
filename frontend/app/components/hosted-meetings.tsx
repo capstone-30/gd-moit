@@ -8,6 +8,7 @@ import {api,RequestError,loadAccountContext,cursorQuery,useData,useApiData,usePa
 import {dateRange,schoolDate,formatTimestamp} from './calendar';
 import {DateSlotFields} from './date-slot-fields';
 import {MeetingCardFrame} from './meeting-card';
+import {useBackLink} from './site-header';
 
 type Documents=DocumentsInput&{activitySubmitted:boolean;expensesSubmitted:boolean;submittedAt:string;updatedAt:string;etag:string};
 type HostedProject={activityType:HostedActivityType;id:string;title:string;meetingCount:number;expiresAt:string};
@@ -16,6 +17,8 @@ type HostedMeeting=HostedMeetingSummary&{documentRequirements:DocumentRequiremen
 type InstitutionHostedMeeting=HostedMeeting&{members:{userId:string;memberNo:number;documents:Documents|null}[]};
 
 const base=(institution:boolean)=>institution?'/institutions/meetings':'/meetings/institution';
+// 기관 모임은 소속 프로젝트 화면으로 돌아간다. 프로젝트가 없는 기존 모임은 프로젝트 목록으로 돌아간다.
+const projectPath=(projectId:string)=>`/institutions/meetings/projects/${encodeURIComponent(projectId)}`;
 const scheduleLabel=(m:HostedMeetingSummary)=>m.date&&m.slot?`${m.date} · ${slotLabel(m.slot)}`:'활동 일정 미정';
 
 export function HostedProjectMeetings({projectId}:{projectId?:string}) {
@@ -68,7 +71,7 @@ export function CreateHostedProject() {
   return <div className="hosted-manager project-create"><Heading title="프로젝트 생성" description="활동 템플릿을 선택하고 새 프로젝트를 만드세요."/>
     <LoadFeedback state={config}/>
     {config.data&&!config.data.data.term&&<p className="help">학교 학기가 설정되면 프로젝트를 만들 수 있습니다.</p>}
-    <Form dirtyGuard disabled={!config.data?.data.term} label="프로젝트 생성" submitContent={<label className="project-name-field">프로젝트명<input name="title" required maxLength={100} placeholder="프로젝트명을 입력하세요"/></label>} submit={async f=>{
+    <Form dirtyGuard disabled={!config.data?.data.term} label="프로젝트 생성" submitContent={<label className="project-name-field">프로젝트명<input name="title" required maxLength={100} placeholder="예: 2학기 멘토링"/></label>} submit={async f=>{
       await api<HostedProject>('hosted-projects',{method:'POST',body:{activityType,title:String(f.get('title'))}});
       return '/institutions/meetings';
     }}><HostedActivityCards selected={activityType} onSelect={setActivityType}/>
@@ -239,8 +242,10 @@ export function HostedMeetingDetail({id,institution=false}:{id:string;institutio
     return {m:m.data,me:context?.me,c:context?.c};
   },[id,institution]);
   const state=useData(load),d=state.data;
-  return <><LoadFeedback state={state} recovery={{href:institution?base(true):"/meetings/manage",label:"모임 목록으로 돌아가기"}}/>{d&&<>
-    <div className="project-title-row"><Heading title={d.m.title} description={`${scheduleLabel(d.m)} · ${d.m.place??'장소 미정'}`}/>{institution&&<div className="management-actions"><DeleteHostedMeeting id={d.m.id}/></div>}</div>
+  const projectId=institution?d?.m.projectId:undefined;
+  useBackLink(projectId?{href:projectPath(projectId),label:'프로젝트로 돌아가기'}:null);
+  return <><LoadFeedback state={state} recovery={{href:institution?(projectId?projectPath(projectId):base(true)):"/meetings/manage",label:"모임 목록으로 돌아가기"}}/>{d&&<>
+    <div className="project-title-row"><Heading title={d.m.title} description={`${scheduleLabel(d.m)} · ${d.m.place??'장소 미정'}`}/>{institution&&<div className="management-actions"><DeleteHostedMeeting id={d.m.id} projectId={d.m.projectId}/></div>}</div>
     <section className="time-banner"><span className="badge">대학 주관</span><h2>활동 안내</h2>{d.m.projectTitle&&<p>프로젝트: {d.m.projectTitle}</p>}<p>학생 {d.m.memberCount}/{d.m.capacity}명 · 자료 보관 만료: {formatTimestamp(d.m.expiresAt,d.c?.school?.timezone??'UTC')}</p><p className="help">활동 서류는 제출한 본인과 주관 담당자만 확인합니다. 연락처·계좌번호 등 불필요한 개인정보를 작성하지 마세요.</p></section>
     {d.m.activityType&&d.m.activityType!=='general'&&<Popup title="활동 참고 포스터" trigger="참고 포스터 보기"><HostedActivityPoster type={d.m.activityType}/><p className="help">참고 포스터입니다. 실제 일정·장소는 위 활동 안내를 확인하세요. 앱에서는 지원금 지급·정산을 제공하지 않습니다.</p></Popup>}
     <Notices timezone={d.c?.school?.timezone??'UTC'} id={id} institution={institution} members={'members' in d.m?d.m.members:undefined} reload={state.reload}/>
@@ -256,8 +261,8 @@ function StudentDocuments({meeting,c,me,reload}:{meeting:HostedMeeting;c:Config;
   </>;
 }
 
-function DeleteHostedMeeting({id}:{id:string}) {
-  return <Popup title="주관 모임 삭제" trigger={<ManagementIcon action="delete" label="주관 모임 삭제"/>} triggerClassName="button danger management-button"><Form danger label="주관 모임·전체 서류 삭제" submit={async()=>{await api(`hosted-meetings/${id}`,{method:'DELETE'});return base(true);}}><label className="check-line"><input type="checkbox" name="confirm" required/>모임과 모든 참여·공지·제출 서류를 함께 삭제합니다. 삭제 후 되돌릴 수 없습니다.</label></Form></Popup>;
+function DeleteHostedMeeting({id,projectId}:{id:string;projectId?:string}) {
+  return <Popup title="주관 모임 삭제" trigger={<ManagementIcon action="delete" label="주관 모임 삭제"/>} triggerClassName="button danger management-button"><Form danger label="주관 모임·전체 서류 삭제" submit={async()=>{await api(`hosted-meetings/${id}`,{method:'DELETE'});return projectId?projectPath(projectId):base(true);}}><label className="check-line"><input type="checkbox" name="confirm" required/>모임과 모든 참여·공지·제출 서류를 함께 삭제합니다. 삭제 후 되돌릴 수 없습니다.</label></Form></Popup>;
 }
 
 function DocumentView({meetingId,userId,documents,timezone}:{timezone:string;meetingId:string;userId:string;documents:Documents}) {

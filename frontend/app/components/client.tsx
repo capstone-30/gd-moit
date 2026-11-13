@@ -80,10 +80,25 @@ export function usePaginatedData<T>(path:string,revision=0) {
   const state=useApiData<T[]>(`${path}${path.includes('?')?'&':'?'}${cursorQuery(pagination.cursor)}`,revision);
   return {...state,...pagination};
 }
+// 페이지를 넘기면 누른 버튼이 사라지거나 바뀌므로, 목록 바로 위 제목으로 포커스와 스크롤을 옮긴다.
+// 목록 항목(카드·글) 안의 제목은 건너뛰고, 팝업 안에서는 그 팝업의 제목만 찾는다.
+export function listHeading(button:HTMLElement) {
+  const scope=button.closest('dialog')??document;
+  return [...scope.querySelectorAll<HTMLElement>('h1,h2,h3')]
+    .filter(heading=>!heading.closest('li,article')&&(scope!==document||!heading.closest('dialog'))&&Boolean(heading.compareDocumentPosition(button)&Node.DOCUMENT_POSITION_FOLLOWING))
+    .at(-1);
+}
+function moveToList(button?:HTMLElement) {
+  if(!button)return;
+  const heading=listHeading(button);
+  if(!heading)return;
+  if(!heading.hasAttribute('tabindex'))heading.setAttribute('tabindex','-1');
+  heading.focus({preventScroll:true});heading.scrollIntoView({block:'start'});
+}
 export function PageButtons({pages,setPages,nextCursor,labels=['이전','다음']}:{pages:(string|null)[];setPages:Dispatch<SetStateAction<(string|null)[]>>;nextCursor?:string|null;labels?:[string,string]}) {
   return <>
-    {pages.length>1&&<button type="button" className="button" onClick={()=>setPages(p=>p.slice(0,-1))}>{labels[0]}</button>}
-    {nextCursor&&<button type="button" className="button" onClick={()=>setPages(p=>[...p,nextCursor])}>{labels[1]}</button>}
+    {pages.length>1&&<button type="button" className="button" onClick={event=>{moveToList(event?.currentTarget);setPages(p=>p.slice(0,-1));}}>{labels[0]}</button>}
+    {nextCursor&&<button type="button" className="button" onClick={event=>{moveToList(event?.currentTarget);setPages(p=>[...p,nextCursor]);}}>{labels[1]}</button>}
   </>;
 }
 export const FormChange=createContext(()=>{});
@@ -108,9 +123,19 @@ export function Form({children,submit,label='저장',successMessage='완료했�
   },[dirtyGuard,dirty]);
 
   const [pending,setPending]=useState<FormData>();
+  // 제출 중에는 fieldset이 비활성이라 누른 버튼의 포커스가 사라진다. 처리가 끝나면 포커스를 잃은 경우에만 그 버튼으로 되돌린다.
+  const restoreFocus=useRef<HTMLElement|null>(null);
+  useEffect(()=>{
+    const target=restoreFocus.current;
+    if(busy||!target)return;
+    restoreFocus.current=null;
+    if(target.isConnected&&(!document.activeElement||document.activeElement===document.body))target.focus();
+  },[busy]);
   async function send(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if(busy) return;
+    const submitter=(event.nativeEvent as SubmitEvent).submitter;
+    restoreFocus.current=submitter instanceof HTMLElement?submitter:document.activeElement instanceof HTMLElement?document.activeElement:null;
     const form=new FormData(event.currentTarget);
     if(confirmation){setPending(form);return;}
     await perform(form);
@@ -177,4 +202,6 @@ export function Slots({slots,selected:current,onSelectedChange:updateSelected,re
   </>}</fieldset>;
 }
 export function ProfileText({profile}:{profile:Profile}){return <span className="muted">{[profile.department,profile.entryYear?`${profile.entryYear}학번`:null,...profile.interests].filter(Boolean).join(' · ')||'선택 프로필 없음'}</span>;}
+// 가능 시간을 등록하지 않으면 시간 겹침·교집합 계산에 내 시간이 빠지므로 모임 탐색·참여 전에 등록을 안내한다.
+export function AvailabilityReminder({children}:{children:ReactNode}){return <aside className="institution-notice availability-reminder" aria-label="가능 시간 등록 안내"><strong>아직 가능 시간을 등록하지 않았어요</strong><p>{children} <a className="text-link" href="/profile#availability">가능 시간 등록</a></p></aside>;}
 export function Heading({title,description,children}:{title:string,description?:string,children?:ReactNode}){return <div className="page-heading"><div><h1>{title}</h1>{description&&<p className="lede">{description}</p>}</div>{children}</div>;}

@@ -111,6 +111,8 @@ export type DB={runtime:Runtime;
   findProposal(values:unknown[]):Promise<Records>;
   acceptProposal(values:unknown[]):Promise<Records>;
   completeProposal(values:unknown[]):Promise<Records>;
+  transferHost(values:unknown[]):Promise<Records>;
+  deleteMeeting(values:unknown[]):Promise<Records>;
   createComment(values:unknown[]):Promise<Records>;
   };
   profile:{

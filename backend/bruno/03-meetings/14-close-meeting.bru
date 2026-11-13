@@ -1,0 +1,15 @@
+meta {
+  name: Close meeting
+  type: http
+  seq: 14
+}
+
+delete {
+  url: {{baseUrl}}/meetings/{{meetingId}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 204
+}

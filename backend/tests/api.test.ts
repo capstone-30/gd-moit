@@ -698,6 +698,41 @@ test('실제 PostgreSQL REST 계약·동시성·삭제', {skip:!enabled}, async 
       assert.equal((await request(`meetings/${cancel}/proposals/${retry.body.data.id}/acceptances/me`,'PUT',users[2],undefined,{'if-match':d.headers.get('etag')!})).body.error.code,'PROPOSAL_STALE');
       await availability(users[2],[slot]);
     });
+    await t.test('개설자 제안 철회·개설자 위임·모임 닫기',async()=>{
+      await availability(users[2],[other]);const id=await create(users[3]);await request(`meetings/${id}/members/me`,'PUT',users[2]);
+      let d=await request(`meetings/${id}`,'GET',users[3]);
+      const p=await request(`meetings/${id}/proposals`,'POST',users[3],{date:today,slot},{'if-match':d.headers.get('etag')!});assert.equal(p.status,201);
+      const pid=p.body.data.id,proposal=`meetings/${id}/proposals/${pid}`;
+      const accepted=await request(`${proposal}/acceptances/me`,'PUT',users[2],undefined,{'if-match':p.headers.get('etag')!});assert.equal(accepted.body.data.state,'proposing');
+      const latest={'if-match':accepted.headers.get('etag')!};
+      assert.equal((await request(proposal,'DELETE',users[2],undefined,latest)).status,403);
+      assert.equal((await request(proposal,'DELETE',users[3])).status,428);
+      assert.equal((await request(proposal,'DELETE',users[3],undefined,{'if-match':p.headers.get('etag')!})).status,412);
+      const withdrawn=await request(proposal,'DELETE',users[3],undefined,latest);assert.equal(withdrawn.status,204);
+      d=await request(`meetings/${id}`,'GET',users[3]);
+      assert.equal(d.body.data.state,'undecided');assert.equal(d.body.data.proposal,null);assert.equal(d.headers.get('etag'),withdrawn.headers.get('etag'));
+      assert.equal((await pool.query('SELECT status FROM proposals WHERE id=$1',[pid])).rows[0].status,'cancelled');
+      assert.equal((await request(proposal,'DELETE',users[3],undefined,{'if-match':d.headers.get('etag')!})).body.error.code,'PROPOSAL_STALE');
+      assert.equal((await request(`meetings/${id}/members/me`,'PUT',users[4])).status,200);
+      const current={'if-match':(await request(`meetings/${id}`,'GET',users[3])).headers.get('etag')!};
+      assert.equal((await request(`meetings/${id}/host`,'PUT',users[2],{userId:users[4].id},current)).status,403);
+      assert.equal((await request(`meetings/${id}/host`,'PUT',users[3],{userId:users[2].id})).status,428);
+      for(const target of [users[3],users[5]]) assert.equal((await request(`meetings/${id}/host`,'PUT',users[3],{userId:target.id},current)).body.error.code,'INVALID_MEMBER');
+      const moved=await request(`meetings/${id}/host`,'PUT',users[3],{userId:users[2].id},current);assert.equal(moved.status,200);
+      assert.equal(moved.body.data.hostId,users[2].id);assert.equal(moved.headers.get('etag'),(await request(`meetings/${id}`,'GET',users[2])).headers.get('etag'));
+      assert.equal((await request(`meetings/${id}/members/me`,'DELETE',users[2])).body.error.code,'HOST_CANNOT_LEAVE');
+      assert.equal((await request(`meetings/${id}/members/me`,'DELETE',users[3])).status,204);
+      assert.equal((await request('reports','POST',users[4],{targetType:'meeting',targetId:id,reason:'synthetic'})).status,201);
+      assert.equal((await request(`meetings/${id}`,'DELETE',users[4])).status,403);
+      assert.equal((await request(`meetings/${id}`,'DELETE',users[2],undefined,{'x-csrf-token':'bad'})).status,403);
+      assert.equal((await request(`meetings/${id}`,'DELETE',users[2])).status,204);
+      assert.equal((await request(`meetings/${id}`,'GET',users[4])).status,404);
+      assert.equal((await request(`meetings/${id}`,'DELETE',users[2])).status,404);
+      const remaining=(await pool.query(`SELECT (SELECT count(*) FROM meeting_members WHERE meeting_id=$1)::integer AS members,(SELECT count(*) FROM proposals WHERE meeting_id=$1)::integer AS proposals,
+        (SELECT count(*) FROM reports WHERE target_meeting_id=$1)::integer AS reports,(SELECT count(*) FROM deletion_outbox WHERE entity_id=$1)::integer AS outbox`,[id])).rows[0];
+      assert.deepEqual(remaining,{members:0,proposals:0,reports:0,outbox:1});
+      await availability(users[2],[slot]);
+    });
     await t.test('대안 확정 후 학기 시간 변경 유지·신규 참여 조건·인원 감소·새 동의',async()=>{
       await availability(users[2],[other]);
       const id=await create(users[3],4);

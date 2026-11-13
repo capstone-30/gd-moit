@@ -193,7 +193,10 @@ test('참여 불가 모임도 상세를 열 수 있고 관리 카드는 관리 �
   for(const overrides of [{canJoin:false},{memberCount:4,canJoin:false},{state:'proposing',canJoin:false}]) {
     const inactive=view(overrides);
     assert.match(inactive,/href="\/meetings\/example"/);
-    assert.match(inactive,/참여 불가/);
+    assert.match(inactive,/data-inactive="true"/);
+    // 시간만 겹치지 않는 모임은 참여할 수 있으므로 '참여 불가'로 읽지 않는다.
+    assert.match(inactive,'canJoin' in overrides?/참여 불가/:/내 가능 시간과 겹치지 않음/);
+    if(!('canJoin' in overrides))assert.doesNotMatch(inactive,/참여 불가/);
     assert.doesNotMatch(inactive,/aria-disabled|disabled=/);
   }
   const managed=view({state:'confirmed',confirmation:{date:'2026-10-19',slot:101,source:'intersection'},canJoin:false},true);
