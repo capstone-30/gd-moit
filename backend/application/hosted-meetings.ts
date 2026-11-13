@@ -1,7 +1,7 @@
 import type {AccountRole} from '../../shared/account';
 import type {DocumentsInput,DocumentsSubmission,DocumentRequirements} from '../../shared/activity-documents';
 import type {DB} from './ports';
-import {requireThat} from '../domain/errors';
+import {ApiError,requireThat} from '../domain/errors';
 import {settings,termSlots,validateDate,validatePlace} from './configuration';
 import {paginate,type Page} from './pagination';
 
@@ -45,7 +45,10 @@ export async function createBatch(db:DB,actor:Actor,id:string,input:{meetings:Me
   const c=await settings(db);requireThat(c?.current_term_id===p.term_id,409,'STATE_CONFLICT');
   requireThat(c.school_id===actor.school_id,422,'INVALID_INPUT');
   const meetings=[];
-  for(const meeting of input.meetings) meetings.push(await insertMeeting(db,actor,meeting,c.current_term_id,p));
+  for(const [index,meeting] of input.meetings.entries()) {
+    try {meetings.push(await insertMeeting(db,actor,meeting,c.current_term_id,p));}
+    catch(error){if(error instanceof ApiError&&error.code==='INVALID_INPUT')error.row=index+1;throw error;}
+  }
   return {createdCount:meetings.length,meetings};
 }
 

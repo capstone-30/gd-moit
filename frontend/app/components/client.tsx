@@ -12,6 +12,7 @@ export type Meeting=MeetingSummary&{termId:string,term:Config['term'],hostId:str
 export type Comment={id:string,memberNo:number,body:string,createdAt:string,isMine:boolean};
 export type Availability={registered:boolean;slots:number[]};
 import {api,RequestError,cursorQuery} from './api';
+import {ConfirmDialog} from './popup';
 export {api,RequestError,cursorQuery} from './api';
 export async function loadAccountContext(signal:AbortSignal) {
   const [config,account]=await Promise.all([api<Config>('configuration',{signal}),api<Me>('me',{signal})]);
@@ -66,8 +67,8 @@ export function Feedback({error}:{error?:Error}) {
   return error?<div ref={feedback} tabIndex={-1} role="alert" className="feedback error-message">{error.message}{error instanceof RequestError && error.status===401 && error.code==='UNAUTHENTICATED' && <> <a href="/login">로그인하기</a></>}</div>:null;}
 export function Loading(){return <div className="loading-state" role="status"><p>잠시만 기다려주세요</p><div className="skeleton skeleton-title" aria-hidden="true"/><div className="skeleton" aria-hidden="true"/></div>;}
 export function Retry({error,reload}:{error?:Error,reload:()=>void}){return <><Feedback error={error}/>{error&&<button type="button" className="button" onClick={reload}>다시 불러오기</button>}</>;}
-export function LoadFeedback({state,hasData=Boolean(state.data)}:{state:{data?:unknown;error?:Error;loading:boolean;reload:()=>void};hasData?:boolean}) {
-  return <><Retry error={state.error} reload={state.reload}/>{state.loading&&!hasData&&<Loading/>}</>;
+export function LoadFeedback({state,hasData=Boolean(state.data),recovery}:{state:{data?:unknown;error?:Error;loading:boolean;reload:()=>void};hasData?:boolean;recovery?:{href:string;label:string}}) {
+  return <><Retry error={state.error} reload={state.reload}/>{recovery&&state.error instanceof RequestError&&[403,404].includes(state.error.status)&&<a className="button" href={recovery.href}>{recovery.label}</a>}{state.loading&&!hasData&&<Loading/>}</>;
 }
 export function usePages() {
   const [pages,setPages]=useState<(string|null)[]>([null]);
@@ -86,7 +87,7 @@ export function PageButtons({pages,setPages,nextCursor,labels=['이전','다음'
   </>;
 }
 export const FormChange=createContext(()=>{});
-export function Form({children,submit,label='저장',successMessage='완료했습니다.',danger=false,dirtyGuard=false,disabled=false,onConflict,onBusy,dirty:controlledDirty,onDirtyChange,submitContent}:{children:ReactNode,submit:(form:FormData)=>Promise<unknown>,submitContent?:ReactNode,label?:string,successMessage?:string,danger?:boolean,dirtyGuard?:boolean,disabled?:boolean,onConflict?:()=>void,onBusy?:(busy:boolean)=>void,dirty?:boolean,onDirtyChange?:(dirty:boolean)=>void}) {
+export function Form({children,submit,label='저장',successMessage='완료했습니다.',danger=false,dirtyGuard=false,disabled=false,onConflict,onBusy,dirty:controlledDirty,onDirtyChange,submitContent,confirmation}:{confirmation?:{title:string;message:string;confirmLabel:string}|null,children:ReactNode,submit:(form:FormData)=>Promise<unknown>,submitContent?:ReactNode,label?:string,successMessage?:string,danger?:boolean,dirtyGuard?:boolean,disabled?:boolean,onConflict?:()=>void,onBusy?:(busy:boolean)=>void,dirty?:boolean,onDirtyChange?:(dirty:boolean)=>void}) {
   const [status,setStatus]=useState<'idle'|'submitting'|'success'|Error>('idle');
   const busy=status==='submitting',error=status instanceof Error?status:undefined;
   const [localDirty,setLocalDirty]=useState(false);
@@ -106,10 +107,16 @@ export function Form({children,submit,label='저장',successMessage='완료했�
     return()=>window.removeEventListener('beforeunload',guard);
   },[dirtyGuard,dirty]);
 
+  const [pending,setPending]=useState<FormData>();
   async function send(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if(busy) return;
     const form=new FormData(event.currentTarget);
+    if(confirmation){setPending(form);return;}
+    await perform(form);
+  }
+  async function perform(form:FormData) {
+    setPending(undefined);
     setStatus('submitting');
     onBusy?.(true);
     try {
@@ -127,7 +134,7 @@ export function Form({children,submit,label='저장',successMessage='완료했�
 
   function changed(){setDirty(true);setStatus(value=>value==='success'?'idle':value);}
   const submitButton=<button className={`button ${danger?'danger':'primary'}`} type="submit">{busy?'처리 중…':label}</button>;
-  return <form className="stack" aria-busy={busy} onSubmit={send} onChange={changed}>
+  return <><form className="stack" aria-busy={busy} onSubmit={send} onChange={changed}>
     <fieldset disabled={busy||disabled} className="stack">
       <FormChange value={changed}>{children}</FormChange>
       {dirtyGuard&&dirty&&<p className="unsaved-hint" role="status">변경한 내용이 있습니다. 저장해 반영해주세요.</p>}
@@ -135,7 +142,7 @@ export function Form({children,submit,label='저장',successMessage='완료했�
     </fieldset>
     <Feedback error={error}/>
     <p className="feedback success-message" role="status">{status==='success'?successMessage:busy?'처리 중입니다.':''}</p>
-  </form>;
+  </form>{confirmation&&<ConfirmDialog open={!!pending} {...confirmation} cancelLabel="계속 수정" onCancel={()=>setPending(undefined)} onConfirm={()=>{if(pending&&!busy)void perform(pending);}}/>}</>;
 }
 export const weekdays=['','월','화','수','목','금','토','일'];
 export function slotLabel(slot:number){return `${weekdays[Math.floor(slot/100)]}요일 ${slot%100}교시`;}

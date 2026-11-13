@@ -5,7 +5,7 @@ import Popup,{PopupDialog,useFormDialog} from './popup';
 import {documentsComplete,type DocumentsInput,type DocumentRequirements} from '../../../shared/activity-documents';
 import {useCallback,useState} from 'react';
 import {api,RequestError,loadAccountContext,cursorQuery,useData,useApiData,usePages,usePaginatedData,PageButtons,Form,Heading,LoadFeedback,slotLabel,type Config,type Me} from './client';
-import {dateRange} from './calendar';
+import {dateRange,schoolDate,formatTimestamp} from './calendar';
 import {DateSlotFields} from './date-slot-fields';
 import {MeetingCardFrame} from './meeting-card';
 
@@ -19,9 +19,13 @@ const base=(institution:boolean)=>institution?'/institutions/meetings':'/meeting
 const scheduleLabel=(m:HostedMeetingSummary)=>m.date&&m.slot?`${m.date} · ${slotLabel(m.slot)}`:'활동 일정 미정';
 
 export function HostedProjectMeetings({projectId}:{projectId?:string}) {
-  const loadProject=useCallback(async(signal:AbortSignal)=>projectId?api<HostedProject>(`hosted-projects/${projectId}`,{signal}):null,[projectId]);
+  const loadProject=useCallback(async(signal:AbortSignal)=>{
+    if(!projectId)return null;
+    const [project,config]=await Promise.all([api<HostedProject>(`hosted-projects/${projectId}`,{signal}),api<Config>('configuration',{signal})]);
+    return {...project,timezone:config.data.school?.timezone??'UTC'};
+  },[projectId]);
   const projectState=useData(loadProject);
-  const project=projectState.data?.data;
+  const project=projectState.data?.data,timezone=projectState.data?.timezone??'UTC';
   const {pages,setPages,cursor,reset:resetPages}=usePages();
   const [noticeRevision,setNoticeRevision]=useState(0);
   const [editor,setEditor]=useState<'meetings'|'notice'|null>(null);
@@ -39,12 +43,12 @@ export function HostedProjectMeetings({projectId}:{projectId?:string}) {
     setEditor(null);setMessage(`${count}개 모임을 등록했습니다.`);resetPages();state.reload();
   }
   return <div className="hosted-manager"><Heading title={project?.title??(projectId?'프로젝트 모임':'전체 모임')} description="모임을 구성하고, 공지와 제출 서류를 관리하세요.">{project&&<div className="management-actions"><ProjectTitleEditor project={project} reload={projectState.reload}/><DeleteHostedProject project={project}/></div>}</Heading>
-    {projectId&&<LoadFeedback state={projectState}/>}
+    {projectId&&<LoadFeedback state={projectState} recovery={{href:base(true),label:"프로젝트 목록으로 돌아가기"}}/>}
     <div>
       <section className="project-content" aria-label="프로젝트 모임 관리" aria-busy={state.loading}>
-        {projectId&&<ProjectNotices projectId={projectId} revision={noticeRevision} onChanged={state.reload} onCreate={()=>setEditor('notice')}/>}
+        {projectId&&<ProjectNotices timezone={timezone} projectId={projectId} revision={noticeRevision} onChanged={state.reload} onCreate={()=>setEditor('notice')}/>}
         {message&&<p className="feedback success-message" role="status">{message}</p>}
-        {adding&&project&&<PopupDialog title="모임 일괄 등록" open onClose={form.close}><CreateHostedMeetings projectId={project.id} done={created} {...form}/></PopupDialog>}
+        {adding&&project&&<PopupDialog title="모임 일괄 등록" open onClose={form.close}><CreateHostedMeetings projectId={project.id} done={created} {...form}/>{form.confirmation}</PopupDialog>}
         <div className="project-toolbar project-meetings-toolbar"><h2>소속 모임{current&&<span className="help"> · 이 페이지 {current.data.length}개</span>}</h2><div className="project-toolbar-actions">
           <button className="text-button" disabled={state.loading||form.busy} onClick={state.reload}>새로고침</button>
           {project&&<button className="button primary" disabled={form.busy||composing} aria-haspopup="dialog" onClick={()=>setEditor('meetings')}>모임 등록</button>}
@@ -52,7 +56,7 @@ export function HostedProjectMeetings({projectId}:{projectId?:string}) {
         <LoadFeedback state={state} hasData={Boolean(current)}/>
         {current&&<>{current.data.length===0?<div className="project-empty"><h3>{project?'아직 등록한 모임이 없습니다':'등록된 모임이 없습니다'}</h3><p>{project?'모임 이름과 학생 구성을 입력해 첫 모임을 등록하세요.':'프로젝트 생성 메뉴에서 프로젝트를 만든 뒤 모임을 등록하세요.'}</p>{!projectId&&<a className="button primary" href="/institutions/projects/new">프로젝트 생성</a>}</div>:<ul className="meetings">{current.data.map(m=><HostedMeetingCard key={m.id} meeting={m} institution/>)}</ul>}
           <div className="pagination"><PageButtons pages={pages} setPages={setPages} nextCursor={current.nextCursor}/></div></>}
-        {composing&&<PopupDialog title="전체 모임에 공지" open onClose={form.close}><NoticeForm projectId={projectId} selected={{}} {...form} clear={()=>{setEditor(null);setMessage('전체 모임에 공지를 게시했습니다.');state.reload();setNoticeRevision(v=>v+1);}}/></PopupDialog>}
+        {composing&&<PopupDialog title="전체 모임에 공지" open onClose={form.close}><NoticeForm projectId={projectId} selected={{}} {...form} clear={()=>{setEditor(null);setMessage('전체 모임에 공지를 게시했습니다.');state.reload();setNoticeRevision(v=>v+1);}}/>{form.confirmation}</PopupDialog>}
       </section>
     </div>
   </div>;
@@ -125,16 +129,22 @@ export function HostedMeetingCard({meeting:m,institution=false}:{meeting:HostedM
 
 function CreateHostedMeetings({projectId,done,onBusy,dirty,onDirtyChange}:{projectId:string;done:(count:number)=>void;onBusy:(busy:boolean)=>void;dirty:boolean;onDirtyChange:(dirty:boolean)=>void}) {
   const [rows,setRows]=useState([0]);
+  const [invalidRow,setInvalidRow]=useState<number>();
   return <Form dirtyGuard dirty={dirty} onDirtyChange={onDirtyChange} onBusy={onBusy} label={`${rows.length}개 모임 한 번에 등록`} submit={async f=>{
     const meetings=rows.map(id=>({title:String(f.get(`title-${id}`)),studentEmails:String(f.get(`students-${id}`)).split(/[\s,;]+/).filter(Boolean)}));
-    await api(`hosted-projects/${projectId}/meetings`,{method:'POST',body:{meetings}});done(meetings.length);
+    setInvalidRow(undefined);
+    try {await api(`hosted-projects/${projectId}/meetings`,{method:'POST',body:{meetings}});done(meetings.length);}
+    catch(error){
+      if(error instanceof RequestError&&error.row){setInvalidRow(rows[error.row-1]);throw new RequestError(`모임 ${error.row}의 이름과 학생 이메일을 확인해주세요. 이름은 100자 이내, 이메일은 중복 없이 같은 학교에 가입한 학생 2~4명이어야 합니다. 전체 입력은 유지됩니다.`,error.status,error.code);}
+      throw error;
+    }
   }}><p className="help" id="batch-students-help">모임마다 가입한 학생 2~4명의 학교 이메일을 쉼표나 줄바꿈으로 구분하세요. 최대 20개까지 등록하며, 일정과 장소는 학생이 정합니다. 잘못된 입력이 있으면 전체 등록을 취소하고 입력을 유지합니다.</p>
-    {rows.map((id,index)=><fieldset className="batch-meeting-row vertical-card" key={id}><legend>모임 {index+1}</legend>
-      <div><label htmlFor={`hosted-title-${id}`}>모임 이름</label><input id={`hosted-title-${id}`} name={`title-${id}`} maxLength={100} required autoFocus={index===0}/></div>
-      <div><label htmlFor={`hosted-students-${id}`}>학생 이메일 · 2~4명</label><textarea id={`hosted-students-${id}`} name={`students-${id}`} required maxLength={1100} aria-describedby="batch-students-help" rows={2} placeholder="student1@school.ac.kr, student2@school.ac.kr"/></div>
-      <button className="text-button" type="button" disabled={rows.length===1} onClick={()=>setRows(current=>current.filter(row=>row!==id))}>모임 {index+1} 입력 삭제</button>
+    {rows.map((id,index)=><fieldset className="batch-meeting-row vertical-card" key={id} onChange={()=>{if(invalidRow===id)setInvalidRow(undefined);}}><legend>모임 {index+1}</legend>{invalidRow===id&&<p className="error-message" id={`batch-error-${id}`}>이 모임의 이름과 학생 이메일을 확인해주세요. 같은 학교에 가입한 학생 2~4명을 중복 없이 입력하세요.</p>}
+      <div><label htmlFor={`hosted-title-${id}`}>모임 이름</label><input id={`hosted-title-${id}`} name={`title-${id}`} maxLength={100} required aria-invalid={invalidRow===id||undefined} autoFocus={index===0}/></div>
+      <div><label htmlFor={`hosted-students-${id}`}>학생 이메일 · 2~4명</label><textarea id={`hosted-students-${id}`} name={`students-${id}`} required maxLength={1100} aria-describedby={`batch-students-help${invalidRow===id?` batch-error-${id}`:""}`} aria-invalid={invalidRow===id||undefined} rows={2} placeholder="student1@school.ac.kr, student2@school.ac.kr"/></div>
+      <button className="text-button" type="button" disabled={rows.length===1} onClick={()=>{onDirtyChange(true);setInvalidRow(undefined);setRows(current=>current.filter(row=>row!==id));}}>모임 {index+1} 입력 삭제</button>
     </fieldset>)}
-    <button className="button" type="button" disabled={rows.length>=20} onClick={()=>setRows(current=>[...current,Math.max(...current)+1])}>모임 입력 추가</button>
+    <button className="button" type="button" disabled={rows.length>=20} onClick={()=>{onDirtyChange(true);setRows(current=>[...current,Math.max(...current)+1]);}}>모임 입력 추가</button>
   </Form>;
 }
 
@@ -160,7 +170,7 @@ export function NoticeForm({projectId,initial,selected,clear,onBusy,dirty,onDirt
   </Form>;
 }
 
-export function ProjectNotices({projectId,revision=0,onCreate,onChanged}:{projectId:string;revision?:number;onCreate:()=>void;onChanged?:()=>void}) {
+export function ProjectNotices({projectId,revision=0,onCreate,onChanged,timezone='UTC'}:{timezone?:string;projectId:string;revision?:number;onCreate:()=>void;onChanged?:()=>void}) {
   const state=usePaginatedData<ProjectNotice>(`hosted-projects/${projectId}/notices`,revision);
   const [editing,setEditing]=useState<ProjectNotice|null>(null);
   const [deleting,setDeleting]=useState<ProjectNotice|null>(null);
@@ -171,9 +181,9 @@ export function ProjectNotices({projectId,revision=0,onCreate,onChanged}:{projec
     <div className="section-heading notice-section-heading"><h2>공지사항</h2><button type="button" className="button notice-create" disabled={form.busy} aria-label="공지사항 작성" title="공지사항 작성" aria-haspopup="dialog" onClick={onCreate}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-7"/><path d="m16 3 5 5M10 14l1-5 7-7 5 5-7 7-6 1Z"/></svg></button></div>
     <p className="help">작성한 공지는 전체 소속 모임에 게시됩니다. 공지를 열면 수정·삭제 아이콘을 사용할 수 있습니다.</p>
     <LoadFeedback state={state}/>
-    {state.data&&<>{state.data.data.length?<div className="notice-list">{state.data.data.map(n=><NoticeCard key={n.id} notice={n} summary={n.submissionSummary} onEdit={()=>setEditing(n)} onDelete={()=>setDeleting(n)} audience={Object.values(n.meetings).join(', ')}/>)}</div>:<p>게시된 공지사항이 없습니다.</p>}
+    {state.data&&<>{state.data.data.length?<div className="notice-list">{state.data.data.map(n=><NoticeCard timezone={timezone} key={n.id} notice={n} summary={n.submissionSummary} onEdit={()=>setEditing(n)} onDelete={()=>setDeleting(n)} audience={Object.values(n.meetings).join(', ')}/>)}</div>:<p>게시된 공지사항이 없습니다.</p>}
       <div className="pagination"><PageButtons {...state} nextCursor={state.data.nextCursor} labels={['이전 공지','다음 공지']}/></div></>}
-    {editing&&<PopupDialog title="공지사항 수정" open onClose={form.close}><NoticeForm projectId={projectId} initial={{...editing,version:latest?.version??editing.version}} selected={editing.meetings} {...form} onConflict={state.reload} clear={()=>{setEditing(null);state.reload();onChanged?.();}}/></PopupDialog>}
+    {editing&&<PopupDialog title="공지사항 수정" open onClose={form.close}><NoticeForm projectId={projectId} initial={{...editing,version:latest?.version??editing.version}} selected={editing.meetings} {...form} onConflict={state.reload} clear={()=>{setEditing(null);state.reload();onChanged?.();}}/>{form.confirmation}</PopupDialog>}
     {currentDeletion&&<PopupDialog title="공지사항 삭제" open onClose={()=>{if(!form.busy)setDeleting(null);}}><Form danger label="공지사항 삭제" onBusy={form.onBusy} onConflict={state.reload} submit={async()=>{
       await api(`hosted-projects/${projectId}/notices/${currentDeletion.id}`,{method:'DELETE',etag:currentDeletion.etag});
       setDeleting(null);state.reload();onChanged?.();
@@ -192,7 +202,7 @@ function ScheduleForm({meeting,c,reload}:{meeting:HostedMeeting;c:Config;reload:
 }
 
 type Notice={id:string;title:string;body:string;createdAt:string;updatedAt?:string;documentRequirements:DocumentRequirements|null};
-export function NoticeCard({notice:n,meetingId,members,onEdit,onDelete,audience,summary}:{notice:Notice;summary?:{total:number;completed:number};meetingId?:string;members?:InstitutionHostedMeeting['members'];onEdit?:()=>void;onDelete?:()=>void;audience?:string}) {
+export function NoticeCard({notice:n,meetingId,members,onEdit,onDelete,audience,summary,timezone='UTC'}:{timezone?:string;notice:Notice;summary?:{total:number;completed:number};meetingId?:string;members?:InstitutionHostedMeeting['members'];onEdit?:()=>void;onDelete?:()=>void;audience?:string}) {
   const required=n.documentRequirements;
   const requests=required&&(required.activity||required.expenses);
   const submissions=required?members?.map(m=>({...m,complete:documentsComplete(required,m.documents)})):undefined;
@@ -202,7 +212,7 @@ export function NoticeCard({notice:n,meetingId,members,onEdit,onDelete,audience,
         {onEdit&&<button className="button management-button" type="button" aria-label="공지사항 수정" title="공지사항 수정" aria-haspopup="dialog" onClick={onEdit}><ManagementIcon action="edit" label="공지사항 수정"/></button>}
         {onDelete&&<button className="button danger management-button" type="button" aria-label="공지사항 삭제" title="공지사항 삭제" aria-haspopup="dialog" onClick={onDelete}><ManagementIcon action="delete" label="공지사항 삭제"/></button>}
       </div>}>
-      <p className="help">{new Date(n.createdAt).toLocaleString('ko-KR')}{n.updatedAt&&n.updatedAt!==n.createdAt&&` · 수정 ${new Date(n.updatedAt).toLocaleString('ko-KR')}`}</p>
+      <p className="help">{formatTimestamp(n.createdAt,timezone)}{n.updatedAt&&n.updatedAt!==n.createdAt&&` · 수정 ${formatTimestamp(n.updatedAt,timezone)}`}</p>
       {audience&&<p className="help">대상 모임: {audience}</p>}<p className="document-text">{n.body}</p>
 
       {required&&<div><p className="help">게시 당시 제출 설정</p><DocumentRequirementsSummary requirements={required}/></div>}
@@ -210,30 +220,30 @@ export function NoticeCard({notice:n,meetingId,members,onEdit,onDelete,audience,
       {requests&&summary&&<span className="notice-submission-summary" aria-label={`${summary.total}명 중 ${summary.completed}명 제출 완료`}>{summary.completed}/{summary.total}명 제출</span>}
       {requests&&submissions&&<Popup title="서류 제출 현황" triggerClassName="button notice-submissions" trigger={<><span className="capacity-dots" role="img" aria-label={`${submissions.length}명 중 ${completed}명 제출 완료`}>{submissions.map(m=><i key={m.userId} aria-hidden="true" className={m.complete?'filled':undefined}/>)}</span><span>{completed}/{submissions.length}명 제출</span></>}>
         <p className="help">이 공지가 요구한 서류의 현재 제출 상태입니다. 채워진 원은 제출 완료, 빈 원은 미제출입니다.</p>
-        {submissions.map(m=><article className="submission-record" key={m.userId}><h3>참여자 {m.memberNo} · {m.complete?'제출 완료':'미제출 서류 있음'}</h3>{m.documents&&<DocumentView meetingId={meetingId!} userId={m.userId} documents={m.documents}/>}</article>)}
+        {submissions.map(m=><article className="submission-record" key={m.userId}><h3>참여자 {m.memberNo} · {m.complete?'제출 완료':'미제출 서류 있음'}</h3>{m.documents&&<DocumentView timezone={timezone} meetingId={meetingId!} userId={m.userId} documents={m.documents}/>}</article>)}
       </Popup>}
     </div>
   </article>;
 }
 
-export function Notices({id,institution,members,reload}:{id:string;institution:boolean;members?:InstitutionHostedMeeting['members'];reload:()=>void}) {
+export function Notices({id,institution,members,reload,timezone='UTC'}:{timezone?:string;id:string;institution:boolean;members?:InstitutionHostedMeeting['members'];reload:()=>void}) {
   const state=usePaginatedData<Notice>(`hosted-meetings/${id}/notices`);
   const [composing,setComposing]=useState(false);
   const form=useFormDialog(()=>setComposing(false));
-  return <section className="detail-section vertical-card"><div className="section-heading notice-section-heading"><h2>공지사항</h2>{institution&&<button type="button" className="button notice-create" aria-label="공지사항 작성" title="공지사항 작성" aria-haspopup="dialog" onClick={()=>setComposing(true)}><ManagementIcon action="edit" label="공지사항 작성"/></button>}{!institution&&<button className="button" onClick={()=>{state.reload();reload();}} disabled={state.loading}>공지 새로고침</button>}</div><LoadFeedback state={state}/>{state.data&&<>{state.data.data.length===0?<p>게시된 공지사항이 없습니다.</p>:<div className="notice-list">{state.data.data.map(n=><NoticeCard key={n.id} notice={n} meetingId={id} members={institution?members:undefined}/>)}</div>}<div className="pagination"><PageButtons {...state} nextCursor={state.data.nextCursor} labels={['이전 공지','다음 공지']}/></div></>}{institution&&composing&&<PopupDialog title="이 모임에 공지" open onClose={form.close}><NoticeForm selected={{[id]:'현재 모임'}} {...form} clear={()=>{setComposing(false);state.reload();reload();}}/></PopupDialog>}</section>;
+  return <section className="detail-section vertical-card"><div className="section-heading notice-section-heading"><h2>공지사항</h2>{institution&&<button type="button" className="button notice-create" aria-label="공지사항 작성" title="공지사항 작성" aria-haspopup="dialog" onClick={()=>setComposing(true)}><ManagementIcon action="edit" label="공지사항 작성"/></button>}{!institution&&<button className="button" onClick={()=>{state.reload();reload();}} disabled={state.loading}>공지 새로고침</button>}</div><LoadFeedback state={state}/>{state.data&&<>{state.data.data.length===0?<p>게시된 공지사항이 없습니다.</p>:<div className="notice-list">{state.data.data.map(n=><NoticeCard timezone={timezone} key={n.id} notice={n} meetingId={id} members={institution?members:undefined}/>)}</div>}<div className="pagination"><PageButtons {...state} nextCursor={state.data.nextCursor} labels={['이전 공지','다음 공지']}/></div></>}{institution&&composing&&<PopupDialog title="이 모임에 공지" open onClose={form.close}><NoticeForm selected={{[id]:'현재 모임'}} {...form} clear={()=>{setComposing(false);state.reload();reload();}}/>{form.confirmation}</PopupDialog>}</section>;
 }
 
 export function HostedMeetingDetail({id,institution=false}:{id:string;institution?:boolean}) {
   const load=useCallback(async(signal:AbortSignal)=>{
-    const [m,context]=await Promise.all([api<HostedMeeting|InstitutionHostedMeeting>(`hosted-meetings/${id}`,{signal}),institution?null:loadAccountContext(signal)]);
+    const [m,context]=await Promise.all([api<HostedMeeting|InstitutionHostedMeeting>(`hosted-meetings/${id}`,{signal}),loadAccountContext(signal)]);
     return {m:m.data,me:context?.me,c:context?.c};
   },[id,institution]);
   const state=useData(load),d=state.data;
-  return <><LoadFeedback state={state}/>{d&&<>
+  return <><LoadFeedback state={state} recovery={{href:institution?base(true):"/meetings/manage",label:"모임 목록으로 돌아가기"}}/>{d&&<>
     <div className="project-title-row"><Heading title={d.m.title} description={`${scheduleLabel(d.m)} · ${d.m.place??'장소 미정'}`}/>{institution&&<div className="management-actions"><DeleteHostedMeeting id={d.m.id}/></div>}</div>
-    <section className="time-banner"><span className="badge">대학 주관</span><h2>활동 안내</h2>{d.m.projectTitle&&<p>프로젝트: {d.m.projectTitle}</p>}<p>학생 {d.m.memberCount}/{d.m.capacity}명 · 자료 보관 만료: {new Date(d.m.expiresAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})}</p><p className="help">활동 서류는 제출한 본인과 주관 담당자만 확인합니다. 연락처·계좌번호 등 불필요한 개인정보를 작성하지 마세요.</p></section>
+    <section className="time-banner"><span className="badge">대학 주관</span><h2>활동 안내</h2>{d.m.projectTitle&&<p>프로젝트: {d.m.projectTitle}</p>}<p>학생 {d.m.memberCount}/{d.m.capacity}명 · 자료 보관 만료: {formatTimestamp(d.m.expiresAt,d.c?.school?.timezone??'UTC')}</p><p className="help">활동 서류는 제출한 본인과 주관 담당자만 확인합니다. 연락처·계좌번호 등 불필요한 개인정보를 작성하지 마세요.</p></section>
     {d.m.activityType&&d.m.activityType!=='general'&&<Popup title="활동 참고 포스터" trigger="참고 포스터 보기"><HostedActivityPoster type={d.m.activityType}/><p className="help">참고 포스터입니다. 실제 일정·장소는 위 활동 안내를 확인하세요. 앱에서는 지원금 지급·정산을 제공하지 않습니다.</p></Popup>}
-    <Notices id={id} institution={institution} members={'members' in d.m?d.m.members:undefined} reload={state.reload}/>
+    <Notices timezone={d.c?.school?.timezone??'UTC'} id={id} institution={institution} members={'members' in d.m?d.m.members:undefined} reload={state.reload}/>
     {!institution&&<StudentDocuments meeting={d.m} c={d.c!} me={d.me} reload={state.reload}/>}
   </>}</>;
 }
@@ -242,7 +252,7 @@ function StudentDocuments({meeting,c,me,reload}:{meeting:HostedMeeting;c:Config;
   if(!meeting.isMember)return null;
   return <>
     {meeting.canSchedule&&c.school&&<ScheduleForm meeting={meeting} c={c} reload={reload}/>}
-    <section className="detail-section vertical-card"><h2>활동 서류 제출</h2>{meeting.myDocuments&&me&&<DocumentView meetingId={meeting.id} userId={me.id} documents={meeting.myDocuments}/>}<ReportForm meeting={meeting} reload={reload}/></section><Popup className="account-controls" title="참여 취소"><Form danger label="참여 취소·서류 삭제" submit={async()=>{await api(`hosted-meetings/${meeting.id}/members/me`,{method:'DELETE'});return '/meetings/manage';}}><label className="check-line"><input type="checkbox" name="confirm" required/>참여와 제출 서류를 함께 삭제합니다.</label></Form></Popup>
+    <section className="detail-section vertical-card"><h2>활동 서류 제출</h2>{meeting.myDocuments&&me&&<DocumentView timezone={c.school?.timezone??'UTC'} meetingId={meeting.id} userId={me.id} documents={meeting.myDocuments}/>}<ReportForm timezone={c.school?.timezone??'UTC'} meeting={meeting} reload={reload}/></section><Popup className="account-controls" title="참여 취소"><Form danger label="참여 취소·서류 삭제" submit={async()=>{await api(`hosted-meetings/${meeting.id}/members/me`,{method:'DELETE'});return '/meetings/manage';}}><label className="check-line"><input type="checkbox" name="confirm" required/>참여와 제출 서류를 함께 삭제합니다.</label></Form></Popup>
   </>;
 }
 
@@ -250,15 +260,15 @@ function DeleteHostedMeeting({id}:{id:string}) {
   return <Popup title="주관 모임 삭제" trigger={<ManagementIcon action="delete" label="주관 모임 삭제"/>} triggerClassName="button danger management-button"><Form danger label="주관 모임·전체 서류 삭제" submit={async()=>{await api(`hosted-meetings/${id}`,{method:'DELETE'});return base(true);}}><label className="check-line"><input type="checkbox" name="confirm" required/>모임과 모든 참여·공지·제출 서류를 함께 삭제합니다. 삭제 후 되돌릴 수 없습니다.</label></Form></Popup>;
 }
 
-function DocumentView({meetingId,userId,documents}:{meetingId:string;userId:string;documents:Documents}) {
+function DocumentView({meetingId,userId,documents,timezone}:{timezone:string;meetingId:string;userId:string;documents:Documents}) {
   const url=`/api/v1/hosted-meetings/${meetingId}/documents/${userId}`;
-  return <div className="document-view"><p className="help">최초 제출 {new Date(documents.submittedAt).toLocaleString('ko-KR')} · 최종 수정 {new Date(documents.updatedAt).toLocaleString('ko-KR')}</p>
+  return <div className="document-view"><p className="help">최초 제출 {formatTimestamp(documents.submittedAt,timezone)} · 최종 수정 {formatTimestamp(documents.updatedAt,timezone)}</p>
     <Popup title="제출 서류 보기">{documents.activitySubmitted&&<><h3>활동 내용</h3><p className="document-text">{documents.content}</p><h3>활동 성과</h3><p className="document-text">{documents.outcome}</p></>}{documents.expensesSubmitted&&<><h3>활동비 사용 내역</h3>{documents.expenses.length===0?<p>지출 없음</p>:<ul className="expense-items">{documents.expenses.map((e,i)=><li key={i}><span>{e.date} · {e.description}</span><strong>{e.amount.toLocaleString('ko-KR')}원</strong></li>)}</ul>}<p><strong>합계 {documents.expenses.reduce((n,e)=>n+e.amount,0).toLocaleString('ko-KR')}원</strong></p></>}</Popup>
     <div className="form-actions">{documents.activitySubmitted&&<a className="button" href={`${url}/activity.csv`} download>활동 보고서 CSV</a>}{documents.expensesSubmitted&&<a className="button" href={`${url}/expenses.csv`} download>사용 내역서 CSV</a>}</div>
   </div>;
 }
 
-export function ReportForm({meeting,reload}:{meeting:HostedMeeting;reload:()=>void}) {
+export function ReportForm({meeting,reload,timezone='UTC'}:{timezone?:string;meeting:HostedMeeting;reload:()=>void}) {
   const [expenses,setExpenses]=useState((meeting.myDocuments?.expenses??[]).map(e=>({...e,amount:String(e.amount)})));
   function change(index:number,key:'date'|'description'|'amount',value:string) {setExpenses(rows=>rows.map((row,i)=>i===index?{...row,[key]:value}:row));}
   if(!meeting.documentRequirements.activity&&!meeting.documentRequirements.expenses)return <p className="muted">현재 제출을 요구하는 서류가 없습니다. 새 제출 안내는 공지사항에서 확인해주세요.</p>;
@@ -276,7 +286,8 @@ export function ReportForm({meeting,reload}:{meeting:HostedMeeting;reload:()=>vo
   }}>
     <fieldset className="stack document-fields" hidden={!meeting.documentRequirements.activity} disabled={!meeting.documentRequirements.activity}><div className="form-section-heading"><h3>활동 보고서</h3><p className="help">무엇을 했고, 어떤 결과를 얻었는지 작성해주세요.</p></div><label htmlFor="activity-content">활동 내용</label><textarea id="activity-content" required maxLength={5000} name="content" defaultValue={meeting.myDocuments?.content??''}/><label htmlFor="activity-outcome">활동 성과</label><textarea id="activity-outcome" required maxLength={2000} name="outcome" defaultValue={meeting.myDocuments?.outcome??''}/></fieldset>
     <fieldset className="stack document-fields" hidden={!meeting.documentRequirements.expenses} disabled={!meeting.documentRequirements.expenses}><div className="form-section-heading"><h3>활동비 사용 내역서</h3></div><p className="help">지출이 없다면 항목을 추가하지 않고 제출하세요. 금액은 원 단위이며 최대 합계 100,000,000원입니다.</p>
-    {expenses.map((e,i)=><fieldset className="expense-row" key={i}><legend>지출 {i+1}</legend><div><label htmlFor={`expense-date-${i}`}>지출일</label><input id={`expense-date-${i}`} type="date" required value={e.date} onChange={event=>change(i,'date',event.target.value)}/></div><div><label htmlFor={`expense-purpose-${i}`}>사용 목적</label><input id={`expense-purpose-${i}`} required maxLength={120} value={e.description} onChange={event=>change(i,'description',event.target.value)}/></div><div><label htmlFor={`expense-amount-${i}`}>금액 (원)</label><input id={`expense-amount-${i}`} type="number" required min={1} max={100000000} step={1} value={e.amount} onChange={event=>change(i,'amount',event.target.value)}/></div><button className="button" type="button" onClick={()=>setExpenses(rows=>rows.filter((_,index)=>index!==i))}>항목 삭제</button></fieldset>)}
+    <p id="expense-date-help" className="help">지출일은 학교 기준 오늘({schoolDate(timezone)})까지 입력할 수 있습니다.</p>
+    {expenses.map((e,i)=><fieldset className="expense-row" key={i}><legend>지출 {i+1}</legend><div><label htmlFor={`expense-date-${i}`}>지출일</label><input id={`expense-date-${i}`} type="date" required max={schoolDate(timezone)} aria-describedby="expense-date-help" value={e.date} onChange={event=>change(i,'date',event.target.value)}/></div><div><label htmlFor={`expense-purpose-${i}`}>사용 목적</label><input id={`expense-purpose-${i}`} required maxLength={120} value={e.description} onChange={event=>change(i,'description',event.target.value)}/></div><div><label htmlFor={`expense-amount-${i}`}>금액 (원)</label><input id={`expense-amount-${i}`} type="number" required min={1} max={100000000} step={1} value={e.amount} onChange={event=>change(i,'amount',event.target.value)}/></div><button className="button" type="button" onClick={()=>setExpenses(rows=>rows.filter((_,index)=>index!==i))}>항목 삭제</button></fieldset>)}
     <button className="button" type="button" disabled={expenses.length>=20} onClick={()=>setExpenses(rows=>[...rows,{date:meeting.date??'',description:'',amount:''}])}>지출 항목 추가</button><p className="expense-total" role="status">합계 {expenses.reduce((n,e)=>n+(Number(e.amount)||0),0).toLocaleString('ko-KR')}원 · {expenses.length}/20항목</p></fieldset><p className="help">제출하면 주관 담당자가 제출한 서류를 열람·다운로드할 수 있습니다.</p>
   </Form>;
 }

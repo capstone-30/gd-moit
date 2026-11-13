@@ -209,7 +209,7 @@ return async function handle(request:Request):Promise<Response> {
   } catch(error) {
     const expected=error instanceof ApiError,e=expected?error:new ApiError(500,'INTERNAL_ERROR');
     if(!expected) logError(e.code,requestId);
-    return respond(Response.json({error:{code:e.code,message:messages[e.code]??'요청을 처리할 수 없습니다.',requestId}},{status:e.status,headers:{'Cache-Control':'no-store',...(e.retryAfter?{'Retry-After':String(e.retryAfter)}:{})}}));
+    return respond(Response.json({error:{code:e.code,message:messages[e.code]??'요청을 처리할 수 없습니다.',requestId,...(e.row?{row:e.row}:{})}},{status:e.status,headers:{'Cache-Control':'no-store',...(e.retryAfter?{'Retry-After':String(e.retryAfter)}:{})}}));
   }
 }
 }

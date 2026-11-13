@@ -33,12 +33,12 @@ export async function issueOtp(db:DB,emailInput:string,ip:string) {
 // Failure returns a value so attempts/consumed OTP are committed, never rolled back.
 export async function login(db:DB,input:{challengeId:string,code:string,privacyVersion:string}) {
   const otp=(await db.auth.lockChallenge([input.challengeId])).rows[0];
-  if(!otp) return {error:new ApiError(401,'OTP_INVALID')};
+  if(!otp) return {error:new ApiError(401,'OTP_DISCARDED')};
   const expired=otp.expires_at.getTime()<=db.runtime.now();
   if(expired || !db.runtime.security.equal(otp.code_hmac,db.runtime.security.hmac(`otp:${otp.id}:${otp.email}:${input.code}`))) {
     if(expired || otp.attempts>=4) await db.auth.removeChallenge([otp.id]);
     else await db.auth.recordFailedAttempt([otp.id]);
-    return {error:new ApiError(401,'OTP_INVALID')};
+    return {error:new ApiError(401,expired?'OTP_EXPIRED':otp.attempts>=4?'OTP_DISCARDED':'OTP_INVALID')};
   }
   const c=await settings(db);
   requireThat(c && input.privacyVersion===c.privacy_version,409,'PRIVACY_VERSION_CHANGED');

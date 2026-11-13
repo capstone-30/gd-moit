@@ -639,3 +639,5 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { background: 
 .form-submit-panel > button, .form-submit-panel input { min-height: 52px; border-radius: var(--radius-pill); }
 .form-submit-panel > button { box-shadow: 0 4px 10px var(--color-shadow-raised); }
 .form-submit-panel input { background: var(--color-surface); box-shadow: var(--shadow-control); }
+
+.new-meeting-card .new-topic input { padding-inline: 12px; border-color: var(--color-border); }
