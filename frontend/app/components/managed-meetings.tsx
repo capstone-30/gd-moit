@@ -1,5 +1,7 @@
 'use client';
-import {usePaginatedData,PageButtons,Heading,LoadFeedback,type MeetingSummary} from './client';
+import {usePaginatedData} from './data';
+import {PageButtons,Heading,LoadFeedback} from './client';
+import {type MeetingSummary} from '../../../shared/contracts';
 import {MeetingCard} from './meeting-card';
 import {HostedMeetingCard,type HostedMeetingSummary} from './hosted-meetings';
 

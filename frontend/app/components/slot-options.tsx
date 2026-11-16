@@ -1,5 +1,5 @@
-import type {Slot} from './client';
-import {slotLabel} from './client';
+import type {Slot} from '../../../shared/contracts';
+import {slotLabel} from '../../../shared/slots';
 import {slotMatchesDate} from '../../../shared/date';
 
 export function SlotOptions({slots,date,allowUndated=false}:{slots:Slot[];date:string;allowUndated?:boolean}) {

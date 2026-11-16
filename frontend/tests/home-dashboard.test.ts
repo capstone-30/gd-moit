@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {AvailabilitySummary,HomeMeetings} from '../app/components/home-dashboard';
-import {loadAvailabilityContext} from '../app/components/client';
+import {loadAvailabilityContext} from '../app/components/data';
 import {RequestError} from '../app/components/api';
 import {accountHome} from '../../shared/account';
 

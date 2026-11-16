@@ -1,6 +1,6 @@
 'use client';
 import {useState} from 'react';
-import type {Slot} from './client';
+import type {Slot} from '../../../shared/contracts';
 import {SlotOptions} from './slot-options';
 import {slotMatchesDate} from '../../../shared/date';
 

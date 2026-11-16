@@ -1,4 +1,6 @@
-import {Slots,slotLabel,type Slot} from './client';
+import {Slots} from './slots';
+import {slotLabel} from '../../../shared/slots';
+import {type Slot} from '../../../shared/contracts';
 
 export function CommonTimes({slots=[],termSlots=[],confirmed=false}:{slots?:number[];termSlots?:Slot[];confirmed?:boolean}) {
   const sorted=[...new Set(slots)].sort((a,b)=>a-b);

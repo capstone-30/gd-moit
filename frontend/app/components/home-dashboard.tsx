@@ -1,6 +1,8 @@
 'use client';
 import type {ReactNode} from 'react';
-import {loadAvailabilityContext,useData,useApiData,LoadFeedback,Heading,type Availability,type Config,type MeetingSummary} from './client';
+import {loadAvailabilityContext,useData,useApiData} from './data';
+import {LoadFeedback,Heading} from './client';
+import {type Availability,type Config,type MeetingSummary} from '../../../shared/contracts';
 import {MeetingCard} from './meeting-card';
 import {HostedMeetingCard,type HostedMeetingSummary} from './hosted-meetings';
 

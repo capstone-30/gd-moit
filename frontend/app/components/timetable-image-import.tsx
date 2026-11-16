@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useId,useRef,useState} from 'react';
-import type {Slot} from './client';
+import type {Slot} from '../../../shared/contracts';
 import {analyzeTimetable,type Pixels,type TimetableGrid} from './timetable-image';
 
 const maxSide=2400;

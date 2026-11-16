@@ -1,4 +1,4 @@
-import type {Slot} from './client';
+import type {Slot} from '../../../shared/contracts';
 
 // 시간표 앱 캡처(단색 배경·요일 열·가로 격자선·색 수업 블록)를 픽셀로 분석한다. 브라우저에서만 실행한다.
 // 격자 한 줄은 사용자가 선택한 1시간(첫 줄 오전 9시) 또는 1교시(첫 줄 1교시)다.

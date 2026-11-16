@@ -1,5 +1,7 @@
 import type {ReactNode} from 'react';
-import {CapacityDots,slotLabel,type MeetingSummary} from './client';
+import {CapacityDots} from './client';
+import {slotLabel} from '../../../shared/slots';
+import {type MeetingSummary} from '../../../shared/contracts';
 import {meetingTypes} from '../../../shared/meeting-types';
 
 type Props={title:string;href:string;linkLabel?:string;badge:string;capacity:number;memberCount:number;inactive?:boolean;place:ReactNode;schedule:ReactNode;children?:ReactNode};

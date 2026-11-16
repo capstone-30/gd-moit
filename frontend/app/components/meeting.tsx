@@ -2,7 +2,12 @@
 import {meetingTypes} from '../../../shared/meeting-types';
 import Popup from './popup';
 import {useCallback,useEffect,useRef,useState} from 'react';
-import {api,loadAccountContext,AvailabilityReminder,useData,usePaginatedData,PageButtons,Form,Heading,LoadFeedback,Loading,slotLabel,ProfileText,type Config,type Meeting,type MeetingSummary,type Comment,type Availability} from './client';
+import {api} from './api';
+import {loadAccountContext,useData,usePaginatedData} from './data';
+import {AvailabilityReminder,PageButtons,Heading,LoadFeedback,Loading,ProfileText} from './client';
+import {Form} from './form';
+import {slotLabel} from '../../../shared/slots';
+import {type Config,type Meeting,type MeetingSummary,type Comment,type Availability} from '../../../shared/contracts';
 import {dateRange,formatTimestamp} from './calendar';
 import {DateSlotFields} from './date-slot-fields';
 import {CommonTimes} from './common-times';

@@ -59,7 +59,7 @@ WATCHPACK_POLLING=true npm run dev -- --hostname 127.0.0.1 --webpack
 
 ### API
 
-기본 경로는 `/api/v1`([RESTful API 기준](docs/03-tech/api.md#restful-api) · [HTTP 어댑터](backend/adapters/http/api.ts) · [Scalar 문서](http://localhost:3000/docs))이다.
+기본 경로는 `/api/v1`([REST API 계약](docs/03-tech/01-architecture.md#rest-api-계약) · [HTTP 어댑터](backend/adapters/http/api.ts) · [Scalar 문서](http://localhost:3000/docs))이다.
 
 - 변경 요청에 `Origin: APP_ORIGIN`·쿠키·`X-CSRF-Token`(`GET /auth/csrf`에서 발급, 로그인 후 재발급)을 전달한다.
 - 조율 요청은 상세 ETag를 `If-Match`로 전달하며 공개 설정은 `GET /configuration`에서 조회한다.
@@ -86,7 +86,7 @@ npm run build
 | --- | --- |
 | [`docs/01-func/`](docs/01-func/README.md) | 범위, 역할별 기능, 업무 정책, 완료 기준 |
 | [`docs/02-uxui/`](docs/02-uxui/01-design.md) | 화면 배치·조작·디자인 기준·시각 자산 |
-| [`docs/03-tech/`](docs/03-tech/README.md) | 아키텍처, 소스 구조, 데이터 모델, REST/IPC 계약 |
+| [`docs/03-tech/`](docs/03-tech/01-architecture.md) | 아키텍처, 소스 구조, 데이터 모델, REST/IPC 계약 |
 | [`docs/04-test/`](docs/04-test/01-verification.md) | 검증 방법, 판정 기준, 최신 판정과 증거 |
 | [`docs/05-ops/`](docs/05-ops/README.md) | 배포·인프라 구성·운영 점검·장애 대응 |
 | `docs/` 루트·주제 폴더 | 비명세 자료(과제 안내, 보고서, 발표, 협업 규칙, 자료 수집 기록) |

@@ -1,6 +1,9 @@
 import Popup,{ConfirmDialog} from '../app/components/popup';
 import AvailabilityForm from '../app/components/availability-form';
-import {Slots,loadAccountContext,Feedback,type MeetingSummary} from '../app/components/client';
+import {Slots} from '../app/components/slots';
+import {loadAccountContext} from '../app/components/data';
+import {Feedback} from '../app/components/client';
+import {type MeetingSummary} from '../../shared/contracts';
 import {LoadFeedback} from '../app/components/client';
 import {PageButtons} from '../app/components/client';
 import {navigationLinks} from '../app/components/navigation';

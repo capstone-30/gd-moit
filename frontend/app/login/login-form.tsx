@@ -1,7 +1,11 @@
 'use client';
 import {accountHome} from '../../../shared/account';
 import {useEffect,useState} from 'react';
-import {api,useApiData,Form,LoadFeedback,RequestError,type Config,type Me} from '../components/client';
+import {api,RequestError} from '../components/api';
+import {useApiData} from '../components/data';
+import {Form} from '../components/form';
+import {LoadFeedback} from '../components/client';
+import {type Config,type Me} from '../../../shared/contracts';
 
 export default function Login() {
   const state=useApiData<Config>('configuration');

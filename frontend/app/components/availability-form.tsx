@@ -1,6 +1,11 @@
 'use client';
 import {useContext,useState} from 'react';
-import {api,useApiData,Form,LoadFeedback,Slots,type Config,type Availability} from './client';
+import {api} from './api';
+import {useApiData} from './data';
+import {Form} from './form';
+import {LoadFeedback} from './client';
+import {Slots} from './slots';
+import {type Config,type Availability} from '../../../shared/contracts';
 import Popup from './popup';
 import {CloseProfileCard} from './profile-cards';
 import TimetableImageImport from './timetable-image-import';

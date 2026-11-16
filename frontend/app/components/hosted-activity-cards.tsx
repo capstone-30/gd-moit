@@ -1,6 +1,6 @@
 'use client';
 import {useContext,useId,useRef} from 'react';
-import {FormChange} from './client';
+import {FormChange} from './form';
 import {hostedActivities,type HostedActivityType} from '../../../shared/hosted-activities';
 
 export function HostedActivityCover({type}:{type:HostedActivityType}) {

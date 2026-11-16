@@ -1,7 +1,10 @@
 'use client';
 import {meetingTypes,type MeetingType} from '../../../../shared/meeting-types';
 import {useState} from 'react';
-import {api,CapacityDots,Form,type Config,type Meeting} from '../../components/client';
+import {api} from '../../components/api';
+import {CapacityDots} from '../../components/client';
+import {Form} from '../../components/form';
+import {type Config,type Meeting} from '../../../../shared/contracts';
 
 export default function NewMeetingForm({config:c}:{config:Config}) {
   const [capacity,setCapacity]=useState(3);

@@ -4,7 +4,12 @@ import {HostedActivityCards,HostedActivityCover,HostedActivityPoster} from './ho
 import Popup,{PopupDialog,useFormDialog} from './popup';
 import {documentsComplete,type DocumentsInput,type DocumentRequirements} from '../../../shared/activity-documents';
 import {useCallback,useState} from 'react';
-import {api,RequestError,loadAccountContext,cursorQuery,useData,useApiData,usePages,usePaginatedData,PageButtons,Form,Heading,LoadFeedback,slotLabel,type Config,type Me} from './client';
+import {api,RequestError,cursorQuery} from './api';
+import {loadAccountContext,useData,useApiData,usePages,usePaginatedData} from './data';
+import {PageButtons,Heading,LoadFeedback} from './client';
+import {Form} from './form';
+import {slotLabel} from '../../../shared/slots';
+import {type Config,type Me} from '../../../shared/contracts';
 import {dateRange,schoolDate,formatTimestamp} from './calendar';
 import {DateSlotFields} from './date-slot-fields';
 import {MeetingCardFrame} from './meeting-card';

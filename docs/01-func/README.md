@@ -6,4 +6,4 @@
 | [학생 요구사항](02-student.md) | 학생 기능·시간 조율·AI 작성 지원 |
 | [기관 요구사항](03-institution.md) | 대학 담당자·주관 모임·제출 서류 |
 
-[분류 기준](../../README.md#문서-분류-기준) · [기술 구조](../03-tech/01-architecture.md) · [기술 명세](../03-tech/README.md) · [테스트 명세](../04-test/01-verification.md)
+[분류 기준](../../README.md#문서-분류-기준) · [기술 구조](../03-tech/01-architecture.md) · [테스트 명세](../04-test/01-verification.md)

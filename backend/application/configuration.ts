@@ -1,3 +1,4 @@
+import type {Config,Slot} from '../../shared/contracts';
 import {privacyKeys} from '../../shared/privacy';
 import type {DB} from './ports';
 import {parseDate,coordinationRange,slotMatchesDate} from '../../shared/date';
@@ -14,7 +15,7 @@ export async function registrationReady(db:DB,config:Awaited<ReturnType<typeof s
   if(!db.runtime.deletionDeliveryReady||!db.runtime.mailReady) return false;
   return Boolean((await db.configuration.hasRegistrationData([config.current_term_id,config.school_id])).rowCount);
 }
-export async function configuration(db:DB) {
+export async function configuration(db:DB):Promise<Config> {
   const c=await settings(db);
   if(!c) return {school:null,term:null,places:[],registrationAvailable:false,privacyVersion:null,privacyNotice:null};
   return {school:{id:c.school_id,name:c.school_name,timezone:c.timezone,departments:c.departments,entryYears:c.entry_years},term:{id:c.current_term_id,startsOn:c.starts_on,endsOn:c.ends_on,
@@ -24,7 +25,7 @@ export async function configuration(db:DB) {
     ...(db.runtime.demoEnabled&&c.privacy_version===demoPrivacyVersion?{demoAccounts}:{}),
   };
 }
-export async function termSlots(db:DB,termId:string) {
+export async function termSlots(db:DB,termId:string):Promise<Slot[]> {
   return (await db.configuration.listTermSlots([termId])).rows;
 }
 export async function validatePlace(db:DB,placeId:string,schoolId:string) {

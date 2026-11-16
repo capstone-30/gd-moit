@@ -2,7 +2,9 @@
 import {meetingTypes} from '../../../shared/meeting-types';
 import {useState} from 'react';
 import {MeetingCard} from './meeting-card';
-import {usePaginatedData,useData,loadAvailabilityContext,AvailabilityReminder,PageButtons,Heading,Loading,Retry,type MeetingSummary} from './client';
+import {usePaginatedData,useData,loadAvailabilityContext} from './data';
+import {AvailabilityReminder,PageButtons,Heading,Loading,Retry} from './client';
+import {type MeetingSummary} from '../../../shared/contracts';
 
 export default function MeetingList(){
   const [type,setType]=useState('');

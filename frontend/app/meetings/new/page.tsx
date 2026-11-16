@@ -1,5 +1,6 @@
 'use client';
-import {loadAccountContext,useData,Heading,LoadFeedback} from '../../components/client';
+import {loadAccountContext,useData} from '../../components/data';
+import {Heading,LoadFeedback} from '../../components/client';
 import NewMeetingForm from './new-meeting-form';
 export default function NewMeeting(){
   const state=useData(loadAccountContext),d=state.data;

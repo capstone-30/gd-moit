@@ -1,6 +1,10 @@
 'use client';
 import {useState} from 'react';
-import {api,loadAvailabilityContext,useData,usePaginatedData,PageButtons,Form,Heading,LoadFeedback,ProfileText,type Config,type Me,type Profile} from '../components/client';
+import {api} from '../components/api';
+import {loadAvailabilityContext,useData,usePaginatedData} from '../components/data';
+import {PageButtons,Heading,LoadFeedback,ProfileText} from '../components/client';
+import {Form} from '../components/form';
+import {type Config,type Me,type Profile} from '../../../shared/contracts';
 import AccountControls from '../components/account-controls';
 import ProfileCards from '../components/profile-cards';
 import ProfileInterests from '../components/profile-interests';

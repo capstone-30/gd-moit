@@ -1,4 +1,4 @@
-import { routes } from '../../../backend/adapters/http/api';
+import { routes } from '../../../backend/adapters/http/routes';
 
 export function GET() {
   const paths = Object.fromEntries(routes.map(([pattern, methods, , options]) => {

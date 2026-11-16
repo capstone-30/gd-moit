@@ -1,6 +1,6 @@
 'use client';
 import {useContext,useState} from 'react';
-import {FormChange} from './client';
+import {FormChange} from './form';
 
 export function interestValues(tags:string[],draft:string) {
   return [...new Set([...tags,draft.trim()].filter(Boolean))];

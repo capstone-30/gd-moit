@@ -1,4 +1,4 @@
-import type {Slot} from './client';
+import type {Slot} from '../../../shared/contracts';
 
 export type SavedAvailability={termId:string,name:string,startsOn:string,endsOn:string,slots:number[],termSlots:Slot[]};
 

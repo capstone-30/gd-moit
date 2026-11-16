@@ -1,6 +1,6 @@
 # 공통 요구사항 — 모잇
 
-[README](../../README.md) · [기술 구조](../03-tech/01-architecture.md) · [REST API 명세](../03-tech/api.md) · [테스트 명세](../04-test/01-verification.md)
+[README](../../README.md) · [기술 구조](../03-tech/01-architecture.md) · [테스트 명세](../04-test/01-verification.md)
 
 ## 역할별 요구사항
 
