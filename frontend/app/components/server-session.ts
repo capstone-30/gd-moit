@@ -1,7 +1,7 @@
 import 'server-only';
-import {accountHome,type AccountRole} from '../../../shared/account';
+import {accountHome,loginPath,type AccountRole} from '../../../shared/account';
 import {cache} from 'react';
-import {cookies} from 'next/headers';
+import {cookies,headers} from 'next/headers';
 import {redirect} from 'next/navigation';
 import {currentSession} from '../../../backend/composition';
 
@@ -13,7 +13,7 @@ export const currentAccount=cache(async()=>{
 
 export async function requireAccount(role:AccountRole) {
   const account=await currentAccount();
-  if(!account) redirect('/login');
+  if(!account) redirect(loginPath((await headers()).get('x-moit-path')??accountHome(role)));
   if(account.role!==role) redirect(accountHome(account.role));
   return account;
 }

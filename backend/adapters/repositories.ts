@@ -206,7 +206,7 @@ export function repositories(client:Pick<PoolClient,'query'>,runtime:Runtime):DB
     listAcceptances:values=>client.query(`SELECT a.user_id,mm.member_no FROM proposal_acceptances a JOIN meeting_members mm ON mm.user_id=a.user_id AND mm.meeting_id=$2 WHERE a.proposal_id=$1 ORDER BY mm.member_no`,values),
     findPendingProposal:values=>client.query("SELECT * FROM proposals WHERE meeting_id=$1 AND status='pending'",values),
     findMeeting:values=>client.query('SELECT * FROM meetings WHERE id=$1',values),
-    cancelPendingProposal:values=>client.query("UPDATE proposals SET status='cancelled' WHERE meeting_id=$1 AND status='pending'",values),
+    cancelActiveProposals:values=>client.query("UPDATE proposals SET status='cancelled' WHERE meeting_id=$1 AND status IN ('pending','accepted')",values),
     resetCoordination:values=>client.query(`UPDATE meetings SET state='undecided',confirmed_date=NULL,confirmed_slot=NULL,confirmation_source=NULL,
       expires_at=created_at+interval '90 days',version=version+1 WHERE id=$1 RETURNING id,version,state`,values),
     incrementVersion:values=>client.query('UPDATE meetings SET version=version+1 WHERE id=$1 RETURNING id,version,state',values),

@@ -1,0 +1,29 @@
+meta {
+  name: Reject proposal
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/meetings/{{meetingId}}/proposals/{{proposalId}}/rejections
+  body: json
+  auth: none
+}
+
+headers {
+  If-Match: {{meetingEtag}}
+}
+
+body:json {
+  {}
+}
+
+script:post-response {
+  if (res.getStatus() >= 200 && res.getStatus() < 300) {
+    bru.setVar("meetingEtag", res.getHeader("etag"));
+  }
+}
+
+assert {
+  res.status: eq 200
+}

@@ -698,6 +698,48 @@ test('실제 PostgreSQL REST 계약·동시성·삭제', {skip:!enabled}, async 
       assert.equal((await request(`meetings/${cancel}/proposals/${retry.body.data.id}/acceptances/me`,'PUT',users[2],undefined,{'if-match':d.headers.get('etag')!})).body.error.code,'PROPOSAL_STALE');
       await availability(users[2],[slot]);
     });
+    await t.test('참여자 거절·확정 취소는 기존 동의를 무효화하고 새 조율을 요구한다',async()=>{
+      await availability(users[2],[other]);
+      const id=await create(users[3]),base=`meetings/${id}`;
+      await request(`${base}/members/me`,'PUT',users[2]);
+      const latest=async()=>({'if-match':(await request(base,'GET',users[3])).headers.get('etag')!});
+      const propose=async()=>{
+        const p=await request(`${base}/proposals`,'POST',users[3],{date:today,slot},await latest());
+        assert.equal(p.status,201);return `${base}/proposals/${p.body.data.id}`;
+      };
+      const proposal=await propose();
+      await request(`${proposal}/acceptances/me`,'PUT',users[2],undefined,await latest());
+      const rejection=`${proposal}/rejections`,current=await latest();
+      assert.equal((await request(rejection,'POST',users[4],undefined,current)).status,403);
+      assert.equal((await request(rejection,'POST',users[3],undefined,current)).status,403);
+      assert.equal((await request(rejection,'POST',users[2])).status,428);
+      assert.equal((await request(rejection,'POST',users[2],undefined,{'if-match':'"stale"'})).status,412);
+      assert.equal((await request(rejection,'POST',users[2],undefined,{'x-csrf-token':'bad',...current})).status,403);
+      const rejected=await request(rejection,'POST',users[2],undefined,current);
+      assert.equal(rejected.status,200);assert.equal(rejected.body.data.state,'undecided');assert.equal(rejected.body.data.proposal,null);
+      assert.equal((await request(`${proposal}/acceptances/me`,'PUT',users[2],undefined,await latest())).body.error.code,'PROPOSAL_STALE');
+      const next=await propose();
+      assert.deepEqual((await request(base,'GET',users[3])).body.data.proposal.acceptedMemberNos,[]);
+      assert.equal((await request(`${base}/confirmation`,'DELETE',users[3],undefined,await latest())).body.error.code,'STATE_CONFLICT');
+      for(const user of [users[3],users[2]])assert.equal((await request(`${next}/acceptances/me`,'PUT',user,undefined,await latest())).status,200);
+      assert.equal((await request(base,'GET',users[3])).body.data.state,'confirmed');
+      const confirmed=await latest();
+      assert.equal((await request(`${base}/confirmation`,'DELETE',users[2],undefined,confirmed)).status,403);
+      assert.equal((await request(`${base}/confirmation`,'DELETE',users[3])).status,428);
+      assert.equal((await request(`${base}/confirmation`,'DELETE',users[3],undefined,current)).status,412);
+      const cancelled=await request(`${base}/confirmation`,'DELETE',users[3],undefined,confirmed);assert.equal(cancelled.status,204);
+      let d=await request(base,'GET',users[3]);assert.equal(d.body.data.state,'undecided');assert.equal(d.body.data.confirmation,null);
+      const unchanged=d.headers.get('etag')!;
+      assert.equal((await request(`${base}/confirmation`,'DELETE',users[3],undefined,await latest())).headers.get('etag'),unchanged);
+      assert.equal((await request(`${next}/acceptances/me`,'PUT',users[2],undefined,await latest())).body.error.code,'PROPOSAL_STALE');
+      const fresh=await propose();
+      assert.deepEqual((await request(base,'GET',users[3])).body.data.proposal.acceptedMemberNos,[]);
+      await request(`${fresh}/rejections`,'POST',users[2],undefined,await latest());
+      await availability(users[2],[slot]);
+      assert.equal((await request(`${base}/confirmation`,'PUT',users[3],{date:today,slot},await latest())).body.data.state,'confirmed');
+      assert.equal((await request(`${base}/confirmation`,'DELETE',users[3],undefined,await latest())).status,204);
+      d=await request(base,'GET',users[3]);assert.equal(d.body.data.state,'undecided');assert.equal(d.body.data.confirmation,null);
+    });
     await t.test('개설자 제안 철회·개설자 위임·모임 닫기',async()=>{
       await availability(users[2],[other]);const id=await create(users[3]);await request(`meetings/${id}/members/me`,'PUT',users[2]);
       let d=await request(`meetings/${id}`,'GET',users[3]);

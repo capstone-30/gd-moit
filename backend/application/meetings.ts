@@ -43,7 +43,7 @@ export async function revalidate(db:DB,id:string,checkTime=true) {
   const ms=await members(db,id),common=intersection(ms.map(r=>r.slots));
   // Unanimous consent applies to this dated meeting, independently of recurring availability.
   if(shouldReset(m.state,ms.length,m.confirmed_slot,common,checkTime && m.confirmation_source!=='proposal')) {
-    await db.meetings.cancelPendingProposal([id]);
+    await db.meetings.cancelActiveProposals([id]);
     await db.meetings.resetCoordination([id]);
   } else await db.meetings.incrementVersion([id]);
 }
@@ -125,13 +125,24 @@ export async function closeMeeting(db:DB,actor:Actor,id:string) {
   const m=await getMeeting(db,actor,id);requireThat(m.host_id===actor.id,403,'FORBIDDEN');
   await db.meetings.deleteMeeting([id]);
 }
-export async function withdrawProposal(db:DB,actor:Actor,id:string,proposalId:string,expected:string|null) {
-  const m=await getMeeting(db,actor,id);requireThat(m.host_id===actor.id,403,'FORBIDDEN');checkVersion(m,expected);
+export async function withdrawProposal(db:DB,actor:Actor,id:string,proposalId:string,expected:string|null,reject=false) {
+  const m=await getMeeting(db,actor,id);
+  if(reject) {requireMember(await members(db,id),actor);requireThat(m.host_id!==actor.id,403,'FORBIDDEN');}
+  else requireThat(m.host_id===actor.id,403,'FORBIDDEN');
+  checkVersion(m,expected);
   const p=(await db.meetings.findProposal([proposalId,id])).rows[0];
   requireThat(p && p.status==='pending' && m.state==='proposing',409,'PROPOSAL_STALE');
-  await db.meetings.cancelPendingProposal([id]);
+  await db.meetings.cancelActiveProposals([id]);
   const updated=(await db.meetings.resetCoordination([id])).rows[0];
   return {data:await detail(db,actor,id),etag:etag(updated)};
+}
+export async function cancelConfirmation(db:DB,actor:Actor,id:string,expected:string|null) {
+  const m=await getMeeting(db,actor,id);requireThat(m.host_id===actor.id,403,'FORBIDDEN');checkVersion(m,expected);
+  if(m.state==='undecided') return {etag:etag(m)};
+  requireThat(m.state==='confirmed',409,'STATE_CONFLICT');
+  await db.meetings.cancelActiveProposals([id]);
+  const updated=(await db.meetings.resetCoordination([id])).rows[0];
+  return {etag:etag(updated)};
 }
 export function commentView(c:Record<string,any>,userId:string) {
   return {id:c.id,memberNo:c.author_member_no,body:c.body,createdAt:c.created_at.toISOString(),isMine:c.author_id===userId};

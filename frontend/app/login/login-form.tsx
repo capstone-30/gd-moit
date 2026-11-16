@@ -1,5 +1,5 @@
 'use client';
-import {accountHome} from '../../../shared/account';
+import {accountDestination} from '../../../shared/account';
 import {useEffect,useState} from 'react';
 import {api,RequestError} from '../components/api';
 import {useApiData} from '../components/data';
@@ -7,7 +7,7 @@ import {Form} from '../components/form';
 import {LoadFeedback} from '../components/client';
 import {type Config,type Me} from '../../../shared/contracts';
 
-export default function Login() {
+export default function Login({next}:{next?:string}) {
   const state=useApiData<Config>('configuration');
   const [challenge,setChallenge]=useState<{id:string,expires:number,retry:number,demoCode?:string}>();
   const [email,setEmail]=useState('');
@@ -57,7 +57,7 @@ export default function Login() {
           <Form key={challenge.id} successMessage="" disabled={remaining===0||unusable} submit={async f=>{
             try {
               const {data}=await api<{user:Me}>('auth/sessions',{method:'POST',body:{challengeId:challenge.id,code:String(f.get('code')),privacyVersion:c.privacyVersion,privacyAcknowledged:f.get('privacy')==='on'}});
-              return accountHome(data.user.role);
+              return accountDestination(data.user.role,next);
             } catch(error) {
               if(error instanceof RequestError&&['OTP_EXPIRED','OTP_DISCARDED'].includes(error.code))setUnusable(true);
               throw error;
