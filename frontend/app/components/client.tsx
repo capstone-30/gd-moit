@@ -1,6 +1,7 @@
 'use client';
-import {useEffect,useRef,type ReactNode,type Dispatch,type SetStateAction} from 'react';
+import {useEffect,useRef,useState,type ReactNode,type Dispatch,type SetStateAction} from 'react';
 import {RequestError} from './api';
+import {loginPath} from '../../../shared/account';
 import type {Profile} from '../../../shared/contracts';
 
 export function CapacityDots({capacity,memberCount}:{capacity:number;memberCount:number}) {
@@ -8,8 +9,9 @@ export function CapacityDots({capacity,memberCount}:{capacity:number;memberCount
 }
 export function Feedback({error}:{error?:Error}) {
   const feedback=useRef<HTMLDivElement>(null);
-  useEffect(()=>{if(error)feedback.current?.focus();},[error]);
-  return error?<div ref={feedback} tabIndex={-1} role="alert" className="feedback error-message">{error.message}{error instanceof RequestError && error.status===401 && error.code==='UNAUTHENTICATED' && <> <a href="/login">로그인하기</a></>}</div>:null;}
+  const [login,setLogin]=useState('/login');
+  useEffect(()=>{if(error){feedback.current?.focus();setLogin(loginPath(window.location.pathname+window.location.search+window.location.hash));}},[error]);
+  return error?<div ref={feedback} tabIndex={-1} role="alert" className="feedback error-message">{error.message}{error instanceof RequestError && error.status===401 && error.code==='UNAUTHENTICATED' && <> <a href={login}>로그인하기</a></>}</div>:null;}
 export function Loading(){return <div className="loading-state" role="status"><p>잠시만 기다려주세요</p><div className="skeleton skeleton-title" aria-hidden="true"/><div className="skeleton" aria-hidden="true"/></div>;}
 export function Retry({error,reload}:{error?:Error,reload:()=>void}){return <><Feedback error={error}/>{error&&<button type="button" className="button" onClick={reload}>다시 불러오기</button>}</>;}
 export function LoadFeedback({state,hasData=Boolean(state.data),recovery}:{state:{data?:unknown;error?:Error;loading:boolean;reload:()=>void};hasData?:boolean;recovery?:{href:string;label:string}}) {

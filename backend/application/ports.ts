@@ -98,7 +98,7 @@ export type DB={runtime:Runtime;
   listAcceptances(values:unknown[]):Promise<Records>;
   findPendingProposal(values:unknown[]):Promise<Records>;
   findMeeting(values:unknown[]):Promise<Records>;
-  cancelPendingProposal(values:unknown[]):Promise<Records>;
+  cancelActiveProposals(values:unknown[]):Promise<Records>;
   resetCoordination(values:unknown[]):Promise<Records>;
   incrementVersion(values:unknown[]):Promise<Records>;
   createMeeting(values:unknown[]):Promise<Records>;

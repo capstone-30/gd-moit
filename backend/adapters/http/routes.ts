@@ -125,13 +125,21 @@ export const routes:[string,string,Handler,RouteOptions?][] = [
   ['meetings/:meetingId/members/:userId','DELETE',async({db,params,b,actor})=>{
     empty(b);await meeting.leave(db,actor,params.meetingId,params.userId,true);return {status:204};
   }],
-  ['meetings/:meetingId/confirmation','PUT',coordinate],
+  ['meetings/:meetingId/confirmation','PUT DELETE',async context=>{
+    if(context.request.method==='PUT') return coordinate(context);
+    empty(context.b);
+    const {etag}=await meeting.cancelConfirmation(context.db,context.actor,context.params.meetingId,context.request.headers.get('if-match'));
+    return {status:204,headers:{ETag:etag}};
+  }],
   ['meetings/:meetingId/proposals','POST',coordinate],
   ['meetings/:meetingId/proposals/:proposalId','DELETE',async({db,request,params,b,actor})=>{
     empty(b);const {etag}=await meeting.withdrawProposal(db,actor,params.meetingId,params.proposalId,request.headers.get('if-match'));return {status:204,headers:{ETag:etag}};
   }],
   ['meetings/:meetingId/proposals/:proposalId/acceptances/me','PUT',async({db,request,params,b,actor})=>{
     empty(b);const {data,etag}=await meeting.accept(db,actor,params.meetingId,params.proposalId,request.headers.get('if-match'));return {data,headers:{ETag:etag}};
+  }],
+  ['meetings/:meetingId/proposals/:proposalId/rejections','POST',async({db,request,params,b,actor})=>{
+    empty(b);const {data,etag}=await meeting.withdrawProposal(db,actor,params.meetingId,params.proposalId,request.headers.get('if-match'),true);return {data,headers:{ETag:etag}};
   }],
   ['meetings/:meetingId/comments','GET POST',async({db,request,params,b,q,actor})=>{
     if(request.method==='GET') return lists.comments(db,actor,params.meetingId,page(q,`comments:${actor.id}:${params.meetingId}`));

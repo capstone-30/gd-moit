@@ -419,3 +419,31 @@ test('학교 날짜와 시각은 브라우저 시간대와 무관하게 날짜 �
   assert.equal(schoolDate('America/Los_Angeles',at),'2026-11-13');
   assert.notEqual(formatTimestamp(at.toISOString(),'Asia/Seoul'),formatTimestamp(at.toISOString(),'America/Los_Angeles'));
 });
+
+test('로그인 복귀는 역할에 맞는 내부 화면만 허용한다',async()=>{
+  const {accountDestination,loginPath}=await import('../../shared/account');
+  for(const path of ['/home','/profile#availability','/meetings?type=study','/meetings/new','/meetings/manage/abc-123','/meetings/institution/abc-123'])assert.equal(accountDestination('student',path),path);
+  for(const path of ['/institutions','/institutions/esg','/institutions/projects/new','/institutions/meetings/projects/abc-123','/institutions/meetings/abc-123'])assert.equal(accountDestination('institution',path),path);
+  for(const path of [undefined,'','https://example.com','//example.com','/\\example.com','/meetings/../login','/meetings/%2e%2e/login','/meetings\n','/login','/api/v1/me','/institutions','/meetings/manage/../../institutions'])assert.equal(accountDestination('student',path),'/home');
+  assert.equal(accountDestination('institution','/meetings/manage'),'/institutions');
+  const path='/meetings/manage/abc?type=study#comments';
+  assert.equal(new URL(loginPath(path),'http://localhost').searchParams.get('next'),path);
+});
+
+test('조율 패널은 역할과 상태에 맞는 거절·재조율 및 동의 초기화를 안내한다',async()=>{
+  const {Coordination}=await import('../app/components/meeting');
+  const base={state:'proposing',memberCount:2,intersectionSlots:[],proposal:{id:'p',date:'2026-11-16',slot:101,acceptedMemberNos:[2],myAccepted:true}};
+  const render=(host:boolean,m=base)=>renderToStaticMarkup(createElement(Coordination,{m:m as never,c:{} as never,etag:'"v1"',path:'meetings/id',host,reload:()=>{},onNotice:()=>{}}));
+  const member=render(false);assert.match(member,/제안 거절/);assert.match(member,/모든 참여자의 기존 수락을 취소/);assert.doesNotMatch(member,/제안 철회/);
+  const host=render(true);assert.match(host,/제안 철회/);assert.doesNotMatch(host,/제안 거절<\/button>/);
+  const confirmed={...base,state:'confirmed',proposal:null} as unknown as typeof base;
+  assert.match(render(true,confirmed),/일정 취소하고 다시 조율/);assert.match(render(true,confirmed),/새 대안은 다시 전원 수락/);
+  assert.equal(render(false,confirmed),'');
+});
+
+test('보호 화면 목적지 헤더는 클라이언트 값 대신 실제 요청 경로로 덮어쓴다',async()=>{
+  const {proxy}=await import('../proxy');
+  const {NextRequest}=await import('next/server');
+  const response=proxy(new NextRequest('http://localhost/meetings/manage/abc?type=study',{headers:{'x-moit-path':'//example.com'}}));
+  assert.equal(response.headers.get('x-middleware-request-x-moit-path'),'/meetings/manage/abc?type=study');
+});
