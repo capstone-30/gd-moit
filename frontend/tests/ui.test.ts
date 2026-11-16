@@ -12,7 +12,7 @@ import {DateSlotFields} from '../app/components/date-slot-fields';
 import {CommonTimes} from '../app/components/common-times';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {dateRange} from '../app/components/calendar';
+import {dateRange,schoolDate,formatTimestamp} from '../app/components/calendar';
 import {slotMatchesDate} from '../../shared/date';
 import {api,RequestError,cursorQuery} from '../app/components/api';
 import {reusableSlots,type SavedAvailability} from '../app/components/availability';
@@ -137,8 +137,8 @@ test('화면 API는 매 변경 CSRF를 갱신하고 ETag·본문·no-store·오�
     await api('me',{method:'DELETE'});
     assert.equal(calls[3].init?.body,undefined);
     assert.deepEqual(calls[3].init?.headers,{'X-CSRF-Token':'synthetic-csrf'});
-    globalThis.fetch=async()=>Response.json({error:{message:'다시 조회',code:'VERSION_CONFLICT'}},{status:412,headers:{'retry-after':'60'}});
-    await assert.rejects(api('meetings/test'),(e:unknown)=>e instanceof RequestError && e.status===412 && e.code==='VERSION_CONFLICT' && e.retryAfter===60);
+    globalThis.fetch=async()=>Response.json({error:{message:'다시 조회',code:'VERSION_CONFLICT',row:2}},{status:412,headers:{'retry-after':'60'}});
+    await assert.rejects(api('meetings/test'),(e:unknown)=>e instanceof RequestError && e.status===412 && e.code==='VERSION_CONFLICT' && e.retryAfter===60 && e.row===2);
     calls.length=0;globalThis.fetch=async(url,init)=>{calls.push({url:String(url),init});return Response.json({error:{message:'인증 실패',code:'CSRF_INVALID'}},{status:403});};
     await assert.rejects(api('me',{method:'PATCH',body:{}}),(e:unknown)=>e instanceof RequestError && e.status===403 && e.code==='CSRF_INVALID' && e.message==='인증 실패');
     assert.equal(calls.length,1);
@@ -187,7 +187,10 @@ test('참여 불가 모임도 상세를 열 수 있고 관리 카드는 관리 �
   for(const [type,label] of [['coffee','커피챗'],['lunch','런치챗'],['reflection','회고']] as const)assert.ok(view({type}).includes(label));
   assert.match(html,/aria-label="정원 4명 중 2명 참여"/);
   assert.match(html,/href="\/meetings\/example"/);
-  for(const overrides of [{overlapsMyAvailability:false},{canJoin:false},{memberCount:4,canJoin:false},{state:'proposing',canJoin:false}]) {
+  const nonoverlap=view({overlapsMyAvailability:false});
+  assert.match(nonoverlap,/내 가능 시간과 겹치지 않음/);
+  assert.doesNotMatch(nonoverlap,/참여 불가/);
+  for(const overrides of [{canJoin:false},{memberCount:4,canJoin:false},{state:'proposing',canJoin:false}]) {
     const inactive=view(overrides);
     assert.match(inactive,/href="\/meetings\/example"/);
     assert.match(inactive,/참여 불가/);
@@ -387,4 +390,26 @@ test('인증번호 오류는 로그인 화면으로 되돌리지 않고 세션 �
   const render=(code:string)=>renderToStaticMarkup(createElement(Feedback,{error:new RequestError('인증 실패',401,code)}));
   assert.doesNotMatch(render('OTP_INVALID'),/href="\/login"/);
   assert.match(render('UNAUTHENTICATED'),/href="\/login"/);
+});
+
+
+test('후보가 없는 날짜는 사유와 다른 날짜 선택을 안내한다',()=>{
+  const html=renderToStaticMarkup(createElement(DateSlotFields,{prefix:'empty',range:{min:'2026-11-13',max:'2026-12-01'},slots:[{slot:101,startsAt:'09:00',endsAt:'10:00'}],initialDate:'2026-11-14'}));
+  assert.match(html,/aria-describedby="empty-slot-help"/);
+  assert.match(html,/가능한 교시가 없습니다.*다른 날짜/);
+  assert.equal((html.match(/<option/g)||[]).length,1);
+});
+
+test('상세 권한 오류는 지정한 목록으로 복귀하고 일반 연결 오류는 재시도한다',()=>{
+  const render=(error:Error)=>renderToStaticMarkup(createElement(LoadFeedback,{state:{error,loading:false,reload:()=>{}},recovery:{href:'/meetings/manage',label:'모임 목록'}}));
+  for(const status of [403,404])assert.match(render(new RequestError('조회 실패',status,'NOT_FOUND')),/href="\/meetings\/manage"/);
+  assert.doesNotMatch(render(new Error('연결 실패')),/href=/);
+});
+
+
+test('학교 날짜와 시각은 브라우저 시간대와 무관하게 날짜 경계를 적용한다',()=>{
+  const at=new Date('2026-11-13T16:00:00Z');
+  assert.equal(schoolDate('Asia/Seoul',at),'2026-11-14');
+  assert.equal(schoolDate('America/Los_Angeles',at),'2026-11-13');
+  assert.notEqual(formatTimestamp(at.toISOString(),'Asia/Seoul'),formatTimestamp(at.toISOString(),'America/Los_Angeles'));
 });

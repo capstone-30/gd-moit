@@ -1,12 +1,12 @@
 export class ApiError extends Error {
-  constructor(public status:number, public code:string, public retryAfter?:number) {super(code);}
+  constructor(public status:number, public code:string, public retryAfter?:number, public row?:number) {super(code);}
 }
 export function requireThat(condition:unknown,status:number,code:string):asserts condition {
   if(!condition) throw new ApiError(status,code);
 }
 export const messages:Record<string,string> = {
   UNSUPPORTED_MEDIA_TYPE:'JSON 요청은 application/json으로 보내주세요.',
-  INVALID_INPUT:'입력 형식을 확인해주세요.', UNAUTHENTICATED:'로그인이 필요합니다.', OTP_INVALID:'인증번호가 유효하지 않습니다.',
+  INVALID_INPUT:'입력 형식을 확인해주세요.', UNAUTHENTICATED:'로그인이 필요합니다.', OTP_INVALID:'인증번호가 올바르지 않습니다. 다시 입력해주세요.', OTP_EXPIRED:'인증번호가 만료되었습니다. 새 번호를 받아주세요.', OTP_DISCARDED:'사용할 수 없는 인증번호입니다. 새 번호를 받아주세요.',
   FORBIDDEN:'요청 권한이 없습니다.', CSRF_INVALID:'화면을 새로고침하고 다시 요청해주세요.', NOT_FOUND:'찾을 수 없습니다.',
   MEETING_FULL:'정원이 찼습니다.', HOST_CANNOT_LEAVE:'개설자는 나갈 수 없습니다.', MEMBERSHIP_CONFLICT:'함께 참여할 수 없습니다.',
   CREATION_RESTRICTED:'현재 모임을 개설할 수 없습니다.', PROPOSAL_IN_PROGRESS:'시간 제안을 조율 중입니다.', PROPOSAL_STALE:'이전 제안입니다.',

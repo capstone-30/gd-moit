@@ -22,7 +22,7 @@ export default function NewMeetingForm({config:c}:{config:Config}) {
         </div>
       </div>
       <div className="new-topic">
-        <label className="sr-only" htmlFor="new-topic">모임 제목</label>
+        <label htmlFor="new-topic">모임 제목</label>
         <input id="new-topic" name="topic" maxLength={100} required placeholder="모임 제목을 입력해주세요"/>
       </div>
       <div className="new-place">

@@ -2,13 +2,18 @@
 import {useEffect,useId,useRef,useState,type KeyboardEvent,type ReactNode} from 'react';
 
 export function useFormDialog(onClose:()=>void,message='저장하지 않은 공지를 버리고 닫을까요?') {
-  const [dirty,onDirtyChange]=useState(false),[busy,onBusy]=useState(false);
-  function close() {
-    if(busy||dirty&&!window.confirm(message))return;
-    onDirtyChange(false);
-    onClose();
+  const [dirty,onDirtyChange]=useState(false),[busy,onBusy]=useState(false),[confirming,setConfirming]=useState(false);
+  function discard() {
+    if(busy)return;
+    setConfirming(false);onDirtyChange(false);onClose();
   }
-  return {dirty,onDirtyChange,busy,onBusy,close};
+  function close() {
+    if(busy)return;
+    if(dirty)setConfirming(true);
+    else onClose();
+  }
+  const confirmation=<ConfirmDialog open={confirming} title="입력을 버리고 닫을까요?" message={message} confirmLabel="입력 버리고 닫기" cancelLabel="계속 작성" onConfirm={discard} onCancel={()=>setConfirming(false)}/>;
+  return {dirty,onDirtyChange,busy,onBusy,close,confirmation};
 }
 
 // Esc를 keydown에서 직접 처리한다. cancel만 막으면 Esc를 연달아 누를 때 브라우저가 막지 못하게 강제로 닫아 화면 상태와 어긋난다.

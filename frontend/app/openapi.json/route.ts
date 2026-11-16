@@ -22,7 +22,10 @@ export function GET() {
         ...(method !== 'GET' && method !== 'DELETE' && {
           requestBody: { content: { 'application/json': { schema: { type: 'object' } } } },
         }),
-        responses: { default: { description: 'API 응답' } },
+        responses: { default: {
+          description: pattern==='auth/sessions'?'401: OTP_INVALID(오입력), OTP_EXPIRED(만료), OTP_DISCARDED(폐기)':pattern==='hosted-projects/:projectId/meetings'?'입력 오류 시 row는 요청 모임 순서(1부터)':'API 응답',
+          content: { 'application/json': { schema: { type:'object', properties:{ error:{type:'object',required:['code','message','requestId'],properties:{code:{type:'string'},message:{type:'string'},requestId:{type:'string'},row:{type:'integer',minimum:1,maximum:20}}} } } } },
+        } },
       }];
     }));
     return [path, operations];

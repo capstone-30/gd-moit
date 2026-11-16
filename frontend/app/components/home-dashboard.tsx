@@ -16,7 +16,7 @@ export function AvailabilitySummary({term,times}:{term:Config['term'];times:Avai
   return <>
     <div className="home-card-heading"><h2 id="home-times-title">내 가능 시간</h2><span className="badge">{term?'이번 학기':'학기 미설정'}</span></div>
     {term?<><p className="home-availability-value">{times?.registered?<><strong>{times.slots.length}</strong><span>개 교시</span></>:<strong className="home-unregistered">아직 등록 전이에요</strong>}</p><p className="muted">{times?.registered?'저장한 가능 시간으로 함께할 모임을 찾아요.':'함께할 수 있는 시간을 먼저 알려주세요.'}</p></>:<p className="muted">학기가 설정되면 가능 시간을 등록할 수 있어요.</p>}
-    <a className="text-link home-card-bottom" href="/profile#availability">{times?.registered?'가능 시간 수정':'가능 시간 등록'} <span aria-hidden="true">↗</span></a>
+    <a className="text-link home-card-bottom" href="/profile#availability">{times?.registered?'가능 시간 수정':'가능 시간 등록'} <span aria-hidden="true">→</span></a>
   </>;
 }
 

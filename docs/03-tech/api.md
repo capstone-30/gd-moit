@@ -16,4 +16,5 @@
 ## 인증과 응답
 
 - `moit_session` 쿠키와 변경 요청 `X-CSRF-Token`(`GET /api/v1/auth/csrf`)으로 인증하며 역할별 권한은 [인증·접근 권한](../01-func/01-common.md#인증접근-권한)을 따른다.
-- 성공은 `{data, nextCursor?}`(CSRF는 `{csrfToken}`, CSV·204·405 제외), 오류는 `{error: {code, message, requestId}}` 형식이며 허용되지 않은 쿼리는 거부한다.
+- 성공은 `{data, nextCursor?}`(CSRF는 `{csrfToken}`, CSV·204·405 제외), 오류는 `{error: {code, message, requestId, row?}}` 형식이며 허용되지 않은 쿼리는 거부한다. 일괄 등록 입력 오류의 `row`는 요청 모임의 1부터 시작하는 순서이며 이메일·계정 정보는 포함하지 않는다.
+- OTP 검증은 단순 오입력 `OTP_INVALID`, 만료 `OTP_EXPIRED`, 5회 오입력 폐기 또는 이미 사용할 수 없는 챌린지 `OTP_DISCARDED`를 구분한다(모두 401).

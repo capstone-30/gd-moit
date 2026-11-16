@@ -230,9 +230,13 @@ test('실제 PostgreSQL REST 계약·동시성·삭제', {skip:!enabled}, async 
       assert.equal((await request(path,'POST',users[0],{meetings:[meeting]})).status,403);
       assert.equal((await request(path,'POST',staff,{meetings:[meeting]},{'x-csrf-token':'bad'})).status,403);
       for(const studentEmails of [['user0@school.example','missing@school.example'],['user0@school.example',`${staff.id}@school.example`]]) {
-        assert.equal((await request(path,'POST',staff,{meetings:[meeting,{...meeting,studentEmails}]})).status,422);
+        const failed=await request(path,'POST',staff,{meetings:[meeting,{...meeting,studentEmails}]});
+        assert.equal(failed.status,422);assert.equal(failed.body.error.row,2);
+        assert.deepEqual(Object.keys(failed.body.error).sort(),['code','message','requestId','row']);
         assert.equal((await pool.query('SELECT 1 FROM hosted_meetings WHERE project_id=$1',[id])).rowCount,0);
       }
+      const invalidBatch=await request(path,'POST',staff,{meetings:[meeting,{...meeting,studentEmails:['invalid']}]});
+      assert.equal(invalidBatch.status,400);assert.equal(invalidBatch.body.error.row,2);
       const batch=await request(path,'POST',staff,{meetings:[meeting,{...meeting,title:'둘째 모임',studentEmails:['user3@school.example','user2@school.example']}]});
       assert.equal(batch.status,201,JSON.stringify(batch.body));assert.equal(batch.body.data.createdCount,2);
       const ids=batch.body.data.meetings.map((m:{id:string})=>m.id);
@@ -858,7 +862,10 @@ test('실제 PostgreSQL REST 계약·동시성·삭제', {skip:!enabled}, async 
       const staffLogin=await pre('auth/sessions',{challengeId:staffOtp.body.data.challengeId,code:staffMail.code,privacyVersion:'test-v1',privacyAcknowledged:true});
       assert.equal(staffLogin.status,201);assert.equal(staffLogin.body.data.user.role,'institution');
       const bad=await pre('auth/otp-challenges',{email:'wrong@school.example'});const wrongId=bad.body.data.challengeId,wrongMail=JSON.parse(await readFile(join(mailDir!,`${wrongId}.json`),'utf8'));
-      for(let i=0;i<5;i++) assert.equal((await pre('auth/sessions',{challengeId:wrongId,code:wrongMail.code==='000000'?'000001':'000000',privacyVersion:'test-v1',privacyAcknowledged:true})).status,401);
+      for(let i=0;i<5;i++) {
+        const failure=await pre('auth/sessions',{challengeId:wrongId,code:wrongMail.code==='000000'?'000001':'000000',privacyVersion:'test-v1',privacyAcknowledged:true});
+        assert.equal(failure.status,401);assert.equal(failure.body.error.code,i===4?'OTP_DISCARDED':'OTP_INVALID');
+      }
       assert.equal((await pool.query('SELECT 1 FROM otp_challenges WHERE id=$1',[wrongId])).rowCount,0);
     });
     await t.test('삭제 목록 500건 단위 전달·실패 후 미전달 재시도·빈 목록 무전송',async()=>{

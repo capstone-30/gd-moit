@@ -10,6 +10,7 @@ export class RequestError extends Error {
     public status: number,
     public code: string,
     public retryAfter = 0,
+    public row?:number,
   ) {
     super(message);
   }
@@ -23,6 +24,7 @@ async function readResponse(response: Response, fallback: string, retryAfter = 0
       response.status,
       result.error?.code ?? 'INTERNAL_ERROR',
       retryAfter,
+      result.error?.row,
     );
   }
   return result;

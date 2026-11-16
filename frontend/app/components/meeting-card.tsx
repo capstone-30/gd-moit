@@ -15,5 +15,5 @@ export function MeetingCardFrame({title,href,linkLabel,badge,capacity,memberCoun
 export function MeetingCard({meeting:m,managed=false}:{meeting:MeetingSummary;managed?:boolean}) {
   const href=managed?`/meetings/manage/${m.id}`:`/meetings/${m.id}`;
   const inactive=!managed&&(!m.canJoin||!m.overlapsMyAvailability);
-  return <MeetingCardFrame title={m.topic} href={href} linkLabel={`${m.topic} ${managed?'모임 관리':'상세 보기'}${inactive?' · 참여 불가':''}`} badge={meetingTypes[m.type]} capacity={m.capacity} memberCount={m.memberCount} inactive={inactive} place={m.place.name} schedule={m.confirmation?`${m.confirmation.date} ${slotLabel(m.confirmation.slot)}`:m.state==='proposing'?'시간 조율 중':'일정 미정'}/>;
+  return <MeetingCardFrame title={m.topic} href={href} linkLabel={`${m.topic} ${managed?'모임 관리':'상세 보기'}${!managed&&!m.canJoin?' · 참여 불가':!managed&&!m.overlapsMyAvailability?' · 내 가능 시간과 겹치지 않음':''}`} badge={meetingTypes[m.type]} capacity={m.capacity} memberCount={m.memberCount} inactive={inactive} place={m.place.name} schedule={m.confirmation?`${m.confirmation.date} ${slotLabel(m.confirmation.slot)}`:m.state==='proposing'?'시간 조율 중':'일정 미정'}/>;
 }
