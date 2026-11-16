@@ -2,17 +2,18 @@
 import {meetingTypes} from '../../../shared/meeting-types';
 import {useState} from 'react';
 import {MeetingCard} from './meeting-card';
-import {usePaginatedData,PageButtons,Heading,Loading,Retry,type MeetingSummary} from './client';
+import {usePaginatedData,useData,loadAvailabilityContext,AvailabilityReminder,PageButtons,Heading,Loading,Retry,type MeetingSummary} from './client';
 
 export default function MeetingList(){
   const [type,setType]=useState('');
   const q=new URLSearchParams({membership:'unjoined'});
   if(type)q.set('type',type);
-  const state=usePaginatedData<MeetingSummary>(`meetings?${q}`);
+  const state=usePaginatedData<MeetingSummary>(`meetings?${q}`),context=useData(loadAvailabilityContext).data;
   const filtered=Boolean(type);
   function applyType(next:string){state.reset();setType(next);}
   return <>
     <Heading title="모임 찾기" description="열린 모임을 둘러보세요. 내 시간과 겹치는 모임부터 보여드려요."/>
+    {context?.c.term&&!context.times?.registered&&<AvailabilityReminder>등록하면 내 시간과 겹치는 모임을 먼저 보여드려요.</AvailabilityReminder>}
       <section className="discovery" aria-label="모임 탐색">
         <fieldset className="type-filters discovery-type-filters"><legend className="sr-only">모임 유형</legend>{[['','전체'],...Object.entries(meetingTypes)].map(([value,label])=><label key={value}><input type="radio" name="type" aria-label={label} value={value} checked={type===value} onChange={()=>applyType(value)}/><span>{label}</span></label>)}</fieldset>
         <div className="discovery-results">

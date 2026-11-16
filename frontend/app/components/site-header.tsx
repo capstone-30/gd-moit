@@ -1,8 +1,26 @@
 'use client';
 import {usePathname} from 'next/navigation';
+import {useEffect,useSyncExternalStore} from 'react';
 
-export function SiteHeader({pathname}:{pathname:string}) {
-  const back=[
+type BackLink={href:string;label:string};
+// 경로만으로 알 수 없는 복귀 위치(기관 모임 상세의 소속 프로젝트 등)는 화면이 데이터를 불러온 뒤 지정한다.
+let override:BackLink|null=null;
+const listeners=new Set<()=>void>();
+function setOverride(link:BackLink|null){override=link;listeners.forEach(listener=>listener());}
+export function useBackLink(link:BackLink|null) {
+  const href=link?.href,label=link?.label;
+  useEffect(()=>{
+    if(!href||!label)return;
+    setOverride({href,label});
+    return()=>setOverride(null);
+  },[href,label]);
+}
+function useBackOverride() {
+  return useSyncExternalStore(listener=>{listeners.add(listener);return()=>{listeners.delete(listener);};},()=>override,()=>null);
+}
+
+export function SiteHeader({pathname,override:custom=null}:{pathname:string;override?:BackLink|null}) {
+  const back=custom??[
     {prefix:'/meetings/manage/',href:'/meetings/manage',label:'모임 관리로 돌아가기'},
     {prefix:'/meetings/institution/',href:'/meetings/manage',label:'모임 관리로 돌아가기'},
     {prefix:'/institutions/meetings/',href:'/institutions/meetings',label:'프로젝트 관리로 돌아가기'},
@@ -12,5 +30,5 @@ export function SiteHeader({pathname}:{pathname:string}) {
 }
 
 export default function Header() {
-  return <SiteHeader pathname={usePathname()}/>;
+  return <SiteHeader pathname={usePathname()} override={useBackOverride()}/>;
 }

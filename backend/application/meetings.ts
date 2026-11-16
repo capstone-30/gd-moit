@@ -113,6 +113,26 @@ export async function accept(db:DB,actor:Actor,id:string,proposalId:string,expec
   } else updated=(await db.meetings.incrementVersion([id])).rows[0];
   return {data:{...view,state:updated.state},etag:etag(updated)};
 }
+// 개설자는 나가기 대신 다른 참여자에게 위임하거나 모임을 닫는다. 진행 중인 제안은 위임 후에도 유지한다.
+export async function transferHost(db:DB,actor:Actor,id:string,userId:string,expected:string|null) {
+  const m=await getMeeting(db,actor,id);requireThat(m.host_id===actor.id,403,'FORBIDDEN');checkVersion(m,expected);
+  requireThat(userId!==actor.id,422,'INVALID_MEMBER');
+  const updated=(await db.meetings.transferHost([id,userId])).rows[0];requireThat(updated,422,'INVALID_MEMBER');
+  return {data:await detail(db,actor,id),etag:etag(updated)};
+}
+// 모임 닫기는 종료 상태 없이 삭제한다. 참여·제안·코멘트·모임 신고는 외래 키로 함께 삭제된다.
+export async function closeMeeting(db:DB,actor:Actor,id:string) {
+  const m=await getMeeting(db,actor,id);requireThat(m.host_id===actor.id,403,'FORBIDDEN');
+  await db.meetings.deleteMeeting([id]);
+}
+export async function withdrawProposal(db:DB,actor:Actor,id:string,proposalId:string,expected:string|null) {
+  const m=await getMeeting(db,actor,id);requireThat(m.host_id===actor.id,403,'FORBIDDEN');checkVersion(m,expected);
+  const p=(await db.meetings.findProposal([proposalId,id])).rows[0];
+  requireThat(p && p.status==='pending' && m.state==='proposing',409,'PROPOSAL_STALE');
+  await db.meetings.cancelPendingProposal([id]);
+  const updated=(await db.meetings.resetCoordination([id])).rows[0];
+  return {data:await detail(db,actor,id),etag:etag(updated)};
+}
 export function commentView(c:Record<string,any>,userId:string) {
   return {id:c.id,memberNo:c.author_member_no,body:c.body,createdAt:c.created_at.toISOString(),isMine:c.author_id===userId};
 }

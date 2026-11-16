@@ -208,7 +208,7 @@ export function repositories(client:Pick<PoolClient,'query'>,runtime:Runtime):DB
     findMeeting:values=>client.query('SELECT * FROM meetings WHERE id=$1',values),
     cancelPendingProposal:values=>client.query("UPDATE proposals SET status='cancelled' WHERE meeting_id=$1 AND status='pending'",values),
     resetCoordination:values=>client.query(`UPDATE meetings SET state='undecided',confirmed_date=NULL,confirmed_slot=NULL,confirmation_source=NULL,
-      expires_at=created_at+interval '90 days',version=version+1 WHERE id=$1`,values),
+      expires_at=created_at+interval '90 days',version=version+1 WHERE id=$1 RETURNING id,version,state`,values),
     incrementVersion:values=>client.query('UPDATE meetings SET version=version+1 WHERE id=$1 RETURNING id,version,state',values),
     createMeeting:values=>client.query(`INSERT INTO meetings(host_id,term_id,topic,type,place_id,capacity) VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,values),
     addMember:values=>client.query('INSERT INTO meeting_members(meeting_id,user_id,member_no) VALUES($1,$2,$3)',values),
@@ -221,6 +221,10 @@ export function repositories(client:Pick<PoolClient,'query'>,runtime:Runtime):DB
     findProposal:values=>client.query('SELECT * FROM proposals WHERE id=$1 AND meeting_id=$2',values),
     acceptProposal:values=>client.query('INSERT INTO proposal_acceptances(proposal_id,user_id) VALUES($1,$2)',values),
     completeProposal:values=>client.query("UPDATE proposals SET status='accepted' WHERE id=$1",values),
+    transferHost:values=>client.query(`UPDATE meetings m SET host_id=$2,version=version+1 WHERE m.id=$1
+    AND EXISTS(SELECT 1 FROM meeting_members mm WHERE mm.meeting_id=m.id AND mm.user_id=$2) RETURNING id,version,state`,values),
+    deleteMeeting:values=>client.query(`WITH deleted AS (DELETE FROM meetings WHERE id=$1 RETURNING id)
+    INSERT INTO deletion_outbox(entity_id) SELECT id FROM deleted RETURNING entity_id`,values),
     createComment:values=>client.query('INSERT INTO comments(meeting_id,author_id,author_member_no,body) VALUES($1,$2,$3,$4) RETURNING *',values),
   },
   profile:{
