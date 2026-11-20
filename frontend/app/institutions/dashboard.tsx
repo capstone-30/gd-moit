@@ -1,5 +1,6 @@
 'use client';
 import {useState} from 'react';
+import {Heading} from '../components/client';
 import {esgAreas,meetingTypes,periods,summarizeDemo,type MeetingType} from './demo';
 
 export default function Dashboard() {
@@ -9,7 +10,7 @@ export default function Dashboard() {
   const periodLabel=month?`${month.slice(0,4)}년 ${Number(month.slice(5))}월`:'전체 기간';
   function reset() {setMonth('');setType('');}
   return <div className="institution-page esg-dashboard">
-    <header className="page-heading"><div><h1>ESG 성과</h1><p className="lede">환경을 위한 실천, 함께하는 배움, 투명한 공동체 운영.<br/>캠퍼스의 활동을 세 가지 관점으로 살펴보세요.</p></div><span className="badge">합성 데이터 시연</span></header>
+    <Heading title="ESG 성과" description="환경을 위한 실천, 함께하는 배움, 투명한 공동체 운영. 캠퍼스의 활동을 세 가지 관점으로 살펴보세요."><span className="badge">합성 데이터 시연</span></Heading>
     <section className="institution-filters" aria-label="현황 조회 조건">
       <div><label htmlFor="institution-month">개설 월</label><select id="institution-month" value={month} onChange={e=>setMonth(e.target.value)}><option value="">전체 기간</option>{periods.map(p=><option key={p} value={p}>{p.slice(0,4)}년 {Number(p.slice(5))}월</option>)}</select></div>
       <div><label htmlFor="institution-type">모임 유형</label><select id="institution-type" value={type} onChange={e=>setType(e.target.value as MeetingType|'')}><option value="">전체 유형</option>{Object.entries(meetingTypes).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></div>

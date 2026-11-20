@@ -47,7 +47,7 @@ export default function Login({next}:{next?:string}) {
       <p className="muted">{challenge?(challenge.demoCode?'아래에 표시된 데모 인증번호로 시연을 계속하세요.':'이메일로 받은 6자리 번호를 입력하면 로그인이 완료됩니다.'):'학생과 대학 담당자 모두 학교 이메일로 로그인하면 등록된 계정 유형에 맞는 화면으로 이동해요.'}</p>
       {c?.demoAccounts&&<aside className="institution-notice"><strong>로컬 데모 로그인</strong><p>실제 메일 발송·이메일 소유권 인증 없이 합성 계정으로 시연합니다. 인증번호는 이 화면에 표시됩니다.</p></aside>}
       <LoadFeedback state={state}/><p role="status" className="help">{notice}</p>
-      {c&&(!c.registrationAvailable?<div className="setup-state"><h3>운영 준비 중입니다</h3><p>학교 설정과 개인정보 안내·출시 검증을 마친 뒤 인증을 시작할 수 있습니다.</p><a href="/privacy">개인정보 처리 안내</a></div>:<>
+      {c&&(!c.registrationAvailable?<div className="setup-state"><h3>운영 준비 중입니다</h3><p>학교 설정과 개인정보 안내·출시 검증을 마친 뒤 인증을 시작할 수 있습니다.</p><a className="text-link" href="/privacy">개인정보 처리 안내 <span aria-hidden="true">→</span></a></div>:<>
         {!challenge?<Form successMessage="" submit={async f=>{await issue(String(f.get('email')));}} label="인증번호 받기">
           <label htmlFor="email">학교 이메일</label>
           {c.demoAccounts?<select id="email" name="email" defaultValue={email||c.demoAccounts[0].email}>{c.demoAccounts.map(account=><option key={account.email} value={account.email}>{account.label} · {account.email}</option>)}</select>:<input id="email" name="email" type="email" autoComplete="email" maxLength={254} required defaultValue={email} placeholder="학교 이메일을 입력해주세요"/>}
@@ -69,7 +69,7 @@ export default function Login({next}:{next?:string}) {
             <p id="code-help" className="help">{unusable?'사용할 수 없는 번호입니다. 아래에서 새 인증번호를 받아주세요.':remaining===0?'인증번호가 만료되었습니다. 아래에서 다시 받아주세요.':`남은 시간 ${Math.floor(remaining/60)}분 ${remaining%60}초 · 오입력 5회 시 폐기`}</p>
             <label className="check-line"><input name="privacy" type="checkbox" required/><span><a href="/privacy" target="_blank" rel="noreferrer">개인정보 처리 안내</a>를 확인했으며 필수 처리에 동의합니다. 선택 프로필 없이도 이용할 수 있습니다.</span></label>
           </Form>
-          <div className="auth-resend"><Form successMessage="" disabled={retryIn>0} submit={async()=>{await issue(email);}} label={retryIn>0?`${retryIn}초 후 다시 받기`:'인증번호 다시 받기'}><p className="help">{challenge.demoCode?'새 데모 번호가 필요하면 다시 받아주세요.':'인증번호가 오지 않았나요? 스팸함도 확인해주세요.'}</p></Form></div>
+          <div className="auth-resend"><Form secondary successMessage="" disabled={retryIn>0} submit={async()=>{await issue(email);}} label={retryIn>0?`${retryIn}초 후 다시 받기`:'인증번호 다시 받기'}><p className="help">{challenge.demoCode?'새 데모 번호가 필요하면 다시 받아주세요.':'인증번호가 오지 않았나요? 스팸함도 확인해주세요.'}</p></Form></div>
         </>}
       </>)}
     </section>

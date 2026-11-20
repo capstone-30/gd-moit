@@ -1,6 +1,8 @@
 import {requireAccount} from '../../../../components/server-session';
 import {HostedProjectMeetings} from '../../../../components/hosted-meetings';
 
+export const metadata={title:'프로젝트 모임 관리'};
+
 export default async function Page({params}:{params:Promise<{id:string}>}) {
   await requireAccount('institution');
   return <HostedProjectMeetings projectId={(await params).id}/>;

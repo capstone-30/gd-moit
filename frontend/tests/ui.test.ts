@@ -346,8 +346,14 @@ test('참여자 항목 전체가 안전 메뉴를 열고 본인은 읽기 전용
   const html=render('me',true),trigger=html.slice(0,html.indexOf('<dialog'));
   assert.match(trigger,/<button[^>]*aria-haspopup="dialog"/);
   assert.match(trigger,/참여자 2/);assert.match(trigger,/컴퓨터공학과/);
+  assert.match(trigger,/위임·안전/);
   assert.match(html,/사용자 차단/);assert.match(html,/참여자 내보내기/);
-  assert.doesNotMatch(render('me'),/참여자 내보내기/);
+  assert.ok(html.indexOf('<h3>개설자 위임</h3>')<html.indexOf('<h3>참여자 내보내기</h3>'));
+  assert.ok(html.indexOf('<h3>참여자 내보내기</h3>')<html.indexOf('<h3>사용자 신고</h3>'));
+  assert.ok(html.indexOf('<h3>사용자 신고</h3>')<html.indexOf('<h3>사용자 차단</h3>'));
+  const memberView=render('me');
+  assert.doesNotMatch(memberView,/참여자 내보내기/);
+  assert.match(memberView,/안전 메뉴 ›/);
   const mine=render('other');assert.match(mine,/참여자 2 · 나/);assert.doesNotMatch(mine,/<button|<dialog/);
 });
 
@@ -439,6 +445,12 @@ test('조율 패널은 역할과 상태에 맞는 거절·재조율 및 동의 �
   const confirmed={...base,state:'confirmed',proposal:null} as unknown as typeof base;
   assert.match(render(true,confirmed),/일정 취소하고 다시 조율/);assert.match(render(true,confirmed),/새 대안은 다시 전원 수락/);
   assert.equal(render(false,confirmed),'');
+  const soloUndecided={...base,state:'undecided',memberCount:1,proposal:null} as unknown as typeof base;
+  assert.match(render(true,soloUndecided),/참여자가 2명 이상 모이면/);
+  assert.match(render(true,soloUndecided),/href="\/profile#availability"/);
+  const memberUndecided={...base,state:'undecided',memberCount:2,intersectionSlots:[101],proposal:null} as unknown as typeof base;
+  assert.match(render(false,memberUndecided),/개설자가 함께 가능한 시간 중 하나를 확정/);
+  assert.match(render(false,memberUndecided),/href="\/profile#availability"/);
 });
 
 test('보호 화면 목적지 헤더는 클라이언트 값 대신 실제 요청 경로로 덮어쓴다',async()=>{

@@ -3,6 +3,8 @@ import {accountDestination} from '../../../shared/account';
 import {currentAccount} from '../components/server-session';
 import LoginForm from './login-form';
 
+export const metadata={title:'로그인'};
+
 export default async function LoginPage({searchParams}:{searchParams:Promise<{next?:string|string[]}>}) {
   const query=await searchParams,next=typeof query.next==='string'?query.next:undefined;
   const account=await currentAccount();

@@ -59,11 +59,11 @@ export function HostedProjectMeetings({projectId}:{projectId?:string}) {
         {adding&&project&&<PopupDialog title="모임 일괄 등록" open onClose={form.close}><CreateHostedMeetings projectId={project.id} done={created} {...form}/>{form.confirmation}</PopupDialog>}
         <div className="project-toolbar project-meetings-toolbar"><h2>소속 모임{current&&<span className="help"> · 이 페이지 {current.data.length}개</span>}</h2><div className="project-toolbar-actions">
           <button className="text-button" disabled={state.loading||form.busy} onClick={state.reload}>새로고침</button>
-          {project&&<button className="button primary" disabled={form.busy||composing} aria-haspopup="dialog" onClick={()=>setEditor('meetings')}>모임 등록</button>}
+          {project&&<button className={`button${current?.data.length===0?'':' primary'}`} disabled={form.busy||composing} aria-haspopup="dialog" onClick={()=>setEditor('meetings')}>모임 등록</button>}
         </div></div>
         <LoadFeedback state={state} hasData={Boolean(current)}/>
-        {current&&<>{current.data.length===0?<div className="project-empty"><h3>{project?'아직 등록한 모임이 없습니다':'등록된 모임이 없습니다'}</h3><p>{project?'모임 이름과 학생 구성을 입력해 첫 모임을 등록하세요.':'프로젝트 생성 메뉴에서 프로젝트를 만든 뒤 모임을 등록하세요.'}</p>{!projectId&&<a className="button primary" href="/institutions/projects/new">프로젝트 생성</a>}</div>:<ul className="meetings">{current.data.map(m=><HostedMeetingCard key={m.id} meeting={m} institution/>)}</ul>}
-          <div className="pagination"><PageButtons pages={pages} setPages={setPages} nextCursor={current.nextCursor}/></div></>}
+        {current&&<>{current.data.length===0?<div className="project-empty"><h3>{project?'아직 등록한 모임이 없습니다':'등록된 모임이 없습니다'}</h3><p>{project?'모임 이름과 학생 구성을 입력해 첫 모임을 등록하세요.':'프로젝트 생성 메뉴에서 프로젝트를 만든 뒤 모임을 등록하세요.'}</p>{project?<button type="button" className="button primary" disabled={form.busy||composing} aria-haspopup="dialog" onClick={()=>setEditor('meetings')}>첫 모임 등록</button>:!projectId&&<a className="button primary" href="/institutions/projects/new">프로젝트 생성</a>}</div>:<ul className="meetings">{current.data.map(m=><HostedMeetingCard key={m.id} meeting={m} institution/>)}</ul>}
+          <div className="form-actions pagination"><PageButtons pages={pages} setPages={setPages} nextCursor={current.nextCursor}/></div></>}
         {composing&&<PopupDialog title="전체 모임에 공지" open onClose={form.close}><NoticeForm projectId={projectId} selected={{}} {...form} clear={()=>{setEditor(null);setMessage('전체 모임에 공지를 게시했습니다.');state.reload();setNoticeRevision(v=>v+1);}}/>{form.confirmation}</PopupDialog>}
       </section>
     </div>
@@ -75,12 +75,11 @@ export function CreateHostedProject() {
   const config=useApiData<Config>('configuration');
   return <div className="hosted-manager project-create"><Heading title="프로젝트 생성" description="활동 템플릿을 선택하고 새 프로젝트를 만드세요."/>
     <LoadFeedback state={config}/>
-    {config.data&&!config.data.data.term&&<p className="help">학교 학기가 설정되면 프로젝트를 만들 수 있습니다.</p>}
-    <Form dirtyGuard disabled={!config.data?.data.term} label="프로젝트 생성" submitContent={<label className="project-name-field">프로젝트명<input name="title" required maxLength={100} placeholder="예: 2학기 멘토링"/></label>} submit={async f=>{
+    {config.data&&(!config.data.data.term?<div className="empty-state"><h2>프로젝트 생성 준비 중입니다</h2><p>학교 학기가 설정된 뒤 프로젝트를 만들 수 있습니다.</p><a className="button primary" href="/institutions/meetings">프로젝트 관리로 돌아가기</a></div>:<Form dirtyGuard label="프로젝트 생성" submitContent={<label className="project-name-field">프로젝트명<input name="title" required maxLength={100} placeholder="예: 2학기 멘토링"/></label>} submit={async f=>{
       await api<HostedProject>('hosted-projects',{method:'POST',body:{activityType,title:String(f.get('title'))}});
       return '/institutions/meetings';
     }}><HostedActivityCards selected={activityType} onSelect={setActivityType}/>
-    </Form>
+    </Form>)}
   </div>;
 }
 
@@ -115,8 +114,8 @@ export function HostedProjectManager() {
   const state=usePaginatedData<HostedProject>('hosted-projects');
   return <div className="hosted-manager"><Heading title="프로젝트 관리" description="프로젝트를 선택해 소속 모임과 공지·서류를 관리하세요."/>
     <LoadFeedback state={state}/>
-    {state.data&&<>{state.data.data.length?<ul className="meetings project-cards">{state.data.data.map(p=><HostedProjectCard key={p.id} project={p}/>)}</ul>:<div className="empty-state"><h2>등록된 프로젝트가 없습니다</h2><a className="button primary" href="/institutions/projects/new">프로젝트 생성</a></div>}
-      <div className="pagination"><PageButtons {...state} nextCursor={state.data.nextCursor}/></div></>}
+    {state.data&&<>{state.data.data.length?<ul className="meetings project-cards">{state.data.data.map(p=><HostedProjectCard key={p.id} project={p}/>)}</ul>:<div className="empty-state"><span className="empty-mark" aria-hidden="true">＋</span><h2>등록된 프로젝트가 없습니다</h2><p>활동 템플릿이나 빈 템플릿으로 첫 프로젝트를 만들어보세요.</p><a className="button primary" href="/institutions/projects/new">프로젝트 생성</a></div>}
+      <div className="form-actions pagination"><PageButtons {...state} nextCursor={state.data.nextCursor}/></div></>}
     <a className="text-link" href="/institutions/meetings/all">전체 모임 · 프로젝트 미지정 모임 포함</a>
   </div>;
 }
@@ -189,8 +188,8 @@ export function ProjectNotices({projectId,revision=0,onCreate,onChanged,timezone
     <div className="section-heading notice-section-heading"><h2>공지사항</h2><button type="button" className="button notice-create" disabled={form.busy} aria-label="공지사항 작성" title="공지사항 작성" aria-haspopup="dialog" onClick={onCreate}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-7"/><path d="m16 3 5 5M10 14l1-5 7-7 5 5-7 7-6 1Z"/></svg></button></div>
     <p className="help">작성한 공지는 전체 소속 모임에 게시됩니다. 공지를 열면 수정·삭제 아이콘을 사용할 수 있습니다.</p>
     <LoadFeedback state={state}/>
-    {state.data&&<>{state.data.data.length?<div className="notice-list">{state.data.data.map(n=><NoticeCard timezone={timezone} key={n.id} notice={n} summary={n.submissionSummary} onEdit={()=>setEditing(n)} onDelete={()=>setDeleting(n)} audience={Object.values(n.meetings).join(', ')}/>)}</div>:<p>게시된 공지사항이 없습니다.</p>}
-      <div className="pagination"><PageButtons {...state} nextCursor={state.data.nextCursor} labels={['이전 공지','다음 공지']}/></div></>}
+    {state.data&&<>{state.data.data.length?<div className="notice-list">{state.data.data.map(n=><NoticeCard timezone={timezone} key={n.id} notice={n} summary={n.submissionSummary} onEdit={()=>setEditing(n)} onDelete={()=>setDeleting(n)} audience={Object.values(n.meetings).join(', ')}/>)}</div>:<p className="muted">게시된 공지사항이 없습니다. 우측 상단 버튼으로 첫 공지를 작성해보세요.</p>}
+      <div className="form-actions pagination"><PageButtons {...state} nextCursor={state.data.nextCursor} labels={['이전 공지','다음 공지']}/></div></>}
     {editing&&<PopupDialog title="공지사항 수정" open onClose={form.close}><NoticeForm projectId={projectId} initial={{...editing,version:latest?.version??editing.version}} selected={editing.meetings} {...form} onConflict={state.reload} clear={()=>{setEditing(null);state.reload();onChanged?.();}}/>{form.confirmation}</PopupDialog>}
     {currentDeletion&&<PopupDialog title="공지사항 삭제" open onClose={()=>{if(!form.busy)setDeleting(null);}}><Form danger label="공지사항 삭제" onBusy={form.onBusy} onConflict={state.reload} submit={async()=>{
       await api(`hosted-projects/${projectId}/notices/${currentDeletion.id}`,{method:'DELETE',etag:currentDeletion.etag});
@@ -238,7 +237,7 @@ export function Notices({id,institution,members,reload,timezone='UTC'}:{timezone
   const state=usePaginatedData<Notice>(`hosted-meetings/${id}/notices`);
   const [composing,setComposing]=useState(false);
   const form=useFormDialog(()=>setComposing(false));
-  return <section className="detail-section vertical-card"><div className="section-heading notice-section-heading"><h2>공지사항</h2>{institution&&<button type="button" className="button notice-create" aria-label="공지사항 작성" title="공지사항 작성" aria-haspopup="dialog" onClick={()=>setComposing(true)}><ManagementIcon action="edit" label="공지사항 작성"/></button>}{!institution&&<button className="button" onClick={()=>{state.reload();reload();}} disabled={state.loading}>공지 새로고침</button>}</div><LoadFeedback state={state}/>{state.data&&<>{state.data.data.length===0?<p>게시된 공지사항이 없습니다.</p>:<div className="notice-list">{state.data.data.map(n=><NoticeCard timezone={timezone} key={n.id} notice={n} meetingId={id} members={institution?members:undefined}/>)}</div>}<div className="pagination"><PageButtons {...state} nextCursor={state.data.nextCursor} labels={['이전 공지','다음 공지']}/></div></>}{institution&&composing&&<PopupDialog title="이 모임에 공지" open onClose={form.close}><NoticeForm selected={{[id]:'현재 모임'}} {...form} clear={()=>{setComposing(false);state.reload();reload();}}/>{form.confirmation}</PopupDialog>}</section>;
+  return <section className="detail-section vertical-card"><div className="section-heading notice-section-heading"><h2>공지사항</h2>{institution&&<button type="button" className="button notice-create" aria-label="공지사항 작성" title="공지사항 작성" aria-haspopup="dialog" onClick={()=>setComposing(true)}><ManagementIcon action="edit" label="공지사항 작성"/></button>}{!institution&&<button type="button" className="text-button" onClick={()=>{state.reload();reload();}} disabled={state.loading}>공지 새로고침</button>}</div><LoadFeedback state={state}/>{state.data&&<>{state.data.data.length===0?<p className="muted">{institution?'게시된 공지사항이 없습니다. 우측 상단 버튼으로 첫 공지를 작성해보세요.':'게시된 공지사항이 없습니다. 담당자가 공지를 등록하면 여기에 표시됩니다.'}</p>:<div className="notice-list">{state.data.data.map(n=><NoticeCard timezone={timezone} key={n.id} notice={n} meetingId={id} members={institution?members:undefined}/>)}</div>}<div className="form-actions pagination"><PageButtons {...state} nextCursor={state.data.nextCursor} labels={['이전 공지','다음 공지']}/></div></>}{institution&&composing&&<PopupDialog title="이 모임에 공지" open onClose={form.close}><NoticeForm selected={{[id]:'현재 모임'}} {...form} clear={()=>{setComposing(false);state.reload();reload();}}/>{form.confirmation}</PopupDialog>}</section>;
 }
 
 export function HostedMeetingDetail({id,institution=false}:{id:string;institution?:boolean}) {
@@ -250,9 +249,8 @@ export function HostedMeetingDetail({id,institution=false}:{id:string;institutio
   const projectId=institution?d?.m.projectId:undefined;
   useBackLink(projectId?{href:projectPath(projectId),label:'프로젝트로 돌아가기'}:null);
   return <><LoadFeedback state={state} recovery={{href:institution?(projectId?projectPath(projectId):base(true)):"/meetings/manage",label:"모임 목록으로 돌아가기"}}/>{d&&<>
-    <div className="project-title-row"><Heading title={d.m.title} description={`${scheduleLabel(d.m)} · ${d.m.place??'장소 미정'}`}/>{institution&&<div className="management-actions"><DeleteHostedMeeting id={d.m.id} projectId={d.m.projectId}/></div>}</div>
-    <section className="time-banner"><span className="badge">대학 주관</span><h2>활동 안내</h2>{d.m.projectTitle&&<p>프로젝트: {d.m.projectTitle}</p>}<p>학생 {d.m.memberCount}/{d.m.capacity}명 · 자료 보관 만료: {formatTimestamp(d.m.expiresAt,d.c?.school?.timezone??'UTC')}</p><p className="help">활동 서류는 제출한 본인과 주관 담당자만 확인합니다. 연락처·계좌번호 등 불필요한 개인정보를 작성하지 마세요.</p></section>
-    {d.m.activityType&&d.m.activityType!=='general'&&<Popup title="활동 참고 포스터" trigger="참고 포스터 보기"><HostedActivityPoster type={d.m.activityType}/><p className="help">참고 포스터입니다. 실제 일정·장소는 위 활동 안내를 확인하세요. 앱에서는 지원금 지급·정산을 제공하지 않습니다.</p></Popup>}
+    <Heading title={d.m.title} description={`${scheduleLabel(d.m)} · ${d.m.place??'장소 미정'}`}>{institution&&<div className="management-actions"><DeleteHostedMeeting id={d.m.id} projectId={d.m.projectId}/></div>}</Heading>
+    <section className="time-banner"><span className="badge">대학 주관</span><h2>활동 안내</h2>{d.m.projectTitle&&<p>프로젝트: {d.m.projectTitle}</p>}<p>학생 {d.m.memberCount}/{d.m.capacity}명 · 자료 보관 만료: {formatTimestamp(d.m.expiresAt,d.c?.school?.timezone??'UTC')}</p><p className="help">활동 서류는 제출한 본인과 주관 담당자만 확인합니다. 연락처·계좌번호 등 불필요한 개인정보를 작성하지 마세요.</p>{d.m.activityType&&d.m.activityType!=='general'&&<Popup title="활동 참고 포스터" trigger="참고 포스터 보기"><HostedActivityPoster type={d.m.activityType}/><p className="help">참고 포스터입니다. 실제 일정·장소는 위 활동 안내를 확인하세요. 앱에서는 지원금 지급·정산을 제공하지 않습니다.</p></Popup>}</section>
     <Notices timezone={d.c?.school?.timezone??'UTC'} id={id} institution={institution} members={'members' in d.m?d.m.members:undefined} reload={state.reload}/>
     {!institution&&<StudentDocuments meeting={d.m} c={d.c!} me={d.me} reload={state.reload}/>}
   </>}</>;
@@ -262,7 +260,8 @@ function StudentDocuments({meeting,c,me,reload}:{meeting:HostedMeeting;c:Config;
   if(!meeting.isMember)return null;
   return <>
     {meeting.canSchedule&&c.school&&<ScheduleForm meeting={meeting} c={c} reload={reload}/>}
-    <section className="detail-section vertical-card"><h2>활동 서류 제출</h2>{meeting.myDocuments&&me&&<DocumentView timezone={c.school?.timezone??'UTC'} meetingId={meeting.id} userId={me.id} documents={meeting.myDocuments}/>}<ReportForm timezone={c.school?.timezone??'UTC'} meeting={meeting} reload={reload}/></section><Popup className="account-controls" title="참여 취소"><Form danger label="참여 취소·서류 삭제" submit={async()=>{await api(`hosted-meetings/${meeting.id}/members/me`,{method:'DELETE'});return '/meetings/manage';}}><label className="check-line"><input type="checkbox" name="confirm" required/>참여와 제출 서류를 함께 삭제합니다.</label></Form></Popup>
+    <section className="detail-section vertical-card"><h2>활동 서류 제출</h2>{meeting.myDocuments&&me&&<DocumentView timezone={c.school?.timezone??'UTC'} meetingId={meeting.id} userId={me.id} documents={meeting.myDocuments}/>}<ReportForm timezone={c.school?.timezone??'UTC'} meeting={meeting} reload={reload}/></section>
+    <section className="detail-section vertical-card"><h2>모임 참여 관리</h2><p className="help">참여를 취소하면 이 주관 모임에서 나가며 제출한 활동 서류도 함께 삭제됩니다.</p><Popup title="참여 취소" triggerClassName="button danger"><Form danger label="참여 취소·서류 삭제" submit={async()=>{await api(`hosted-meetings/${meeting.id}/members/me`,{method:'DELETE'});return '/meetings/manage';}}><label className="check-line"><input type="checkbox" name="confirm" required/>참여와 제출 서류를 함께 삭제합니다.</label></Form></Popup></section>
   </>;
 }
 

@@ -5,7 +5,7 @@ import {ConfirmDialog} from './popup';
 import {Feedback} from './client';
 
 export const FormChange=createContext(()=>{});
-export function Form({children,submit,label='저장',successMessage='완료했습니다.',danger=false,dirtyGuard=false,disabled=false,onConflict,onBusy,dirty:controlledDirty,onDirtyChange,submitContent,confirmation}:{confirmation?:{title:string;message:string;confirmLabel:string}|null,children:ReactNode,submit:(form:FormData)=>Promise<unknown>,submitContent?:ReactNode,label?:string,successMessage?:string,danger?:boolean,dirtyGuard?:boolean,disabled?:boolean,onConflict?:()=>void,onBusy?:(busy:boolean)=>void,dirty?:boolean,onDirtyChange?:(dirty:boolean)=>void}) {
+export function Form({children,submit,label='저장',successMessage='완료했습니다.',danger=false,secondary=false,dirtyGuard=false,disabled=false,onConflict,onBusy,dirty:controlledDirty,onDirtyChange,submitContent,confirmation}:{confirmation?:{title:string;message:string;confirmLabel:string}|null,children:ReactNode,submit:(form:FormData)=>Promise<unknown>,submitContent?:ReactNode,label?:string,successMessage?:string,danger?:boolean,secondary?:boolean,dirtyGuard?:boolean,disabled?:boolean,onConflict?:()=>void,onBusy?:(busy:boolean)=>void,dirty?:boolean,onDirtyChange?:(dirty:boolean)=>void}) {
   const [status,setStatus]=useState<'idle'|'submitting'|'success'|Error>('idle');
   const busy=status==='submitting',error=status instanceof Error?status:undefined;
   const [localDirty,setLocalDirty]=useState(false);
@@ -61,7 +61,7 @@ export function Form({children,submit,label='저장',successMessage='완료했�
   }
 
   function changed(){setDirty(true);setStatus(value=>value==='success'?'idle':value);}
-  const submitButton=<button className={`button ${danger?'danger':'primary'}`} type="submit">{busy?'처리 중…':label}</button>;
+  const submitButton=<button className={`button${danger?' danger':secondary?'':' primary'}`} type="submit">{busy?'처리 중…':label}</button>;
   return <><form className="stack" aria-busy={busy} onSubmit={send} onChange={changed}>
     <fieldset disabled={busy||disabled} className="stack">
       <FormChange value={changed}>{children}</FormChange>
