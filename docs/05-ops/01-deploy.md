@@ -36,6 +36,26 @@ sudo systemctl start moit-alert@deployment-check.service
 sudo systemctl list-timers moit-retention.timer
 ```
 
+## 지속 배포(CD)
+
+- CI 통과 후 [CD 워크플로](../../.github/workflows/cd.yml)가 빌드 산출물을 묶고, [배포 단계](../../.github/workflows/deploy.yml)가 OIDC 역할로 S3에 올린 뒤 SSM 문서로 서버의 [배포 스크립트](../../deploy/scripts/deploy.sh)를 실행한다(SSH 미사용).
+- `main` 푸시는 저장소 변수 `STAGING_ENABLED=true`일 때만 staging에 자동 배포하고, production은 `workflow_dispatch`와 GitHub Environment 승인으로만 배포한다.
+- 서버 스크립트는 체크섬 검증 → `releases/<sha>` 해제 → 마이그레이션(`/etc/moit/migrate.env`) → `current` 전환·재시작 → 헬스 체크 순서로 실행하고, 실패 시 직전 릴리스로 되돌린다(DB는 되돌리지 않으므로 하위 호환 마이그레이션만 자동 배포한다).
+
+### CD 최초 설정
+
+1. 환경마다 [CD 스택](../../deploy/aws/cd-stack.yml)을 만든다(두 번째 스택은 `CreateOidcProvider=false`).
+
+   ```sh
+   aws cloudformation deploy --stack-name moit-production-cd --template-file deploy/aws/cd-stack.yml \
+     --capabilities CAPABILITY_NAMED_IAM --parameter-overrides EnvironmentName=production
+   ```
+
+2. 서버에 SSM Agent를 설치하고 스택 출력 `NodeRoleName`으로 하이브리드 활성화(`aws ssm create-activation --registration-limit 1`)를 만들어 등록한 뒤, 노드(`mi-…`)에 태그 `moit-environment=<환경>`을 붙인다(`aws ssm add-tags-to-resource --resource-type ManagedInstance`).
+3. 서버에 `deploy.sh`를 `/opt/moit/bin/deploy.sh`(`root:root`, `0750`)로 설치하고, 마이그레이션 계정 자격 증명을 `/etc/moit/migrate.env`(`root:root`, `0600`)에 둔다. 스크립트가 바뀌면 다시 설치한다.
+4. GitHub Environment(`staging`·`production`)에 변수 `AWS_REGION`·`AWS_DEPLOY_ROLE_ARN`·`ARTIFACT_BUCKET`·`SSM_DOCUMENT`·`SSM_INSTANCE_ID`·`APP_URL`을 등록하고, `production`에는 필수 승인자를 지정한다.
+5. 앱 정지가 필요한 마이그레이션([회고 저장소 이전](../../backend/db/migrations/011_reflections_to_comments.sql) 등)이 포함된 릴리스는 자동 배포하지 않는다. [서버 설치](#서버-설치) 절차대로 앱을 멈추고 수동 적용한 뒤 `migrate=false`로 배포한다.
+
 ### 배포 확인·장애 대응
 
 - 재시작 한도 도달·삭제 작업 실패 시 경보를 전송하며, 로그는 `journalctl -u moit -u moit-retention`(보관 기한 적용)으로 확인한다.
