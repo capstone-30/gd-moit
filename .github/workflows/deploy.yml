@@ -1,0 +1,107 @@
+name: deploy
+
+# cd.yml이 호출하는 환경별 배포 단계. 환경 변수(vars)는 GitHub Environment마다 설정한다.
+#   AWS_REGION, AWS_DEPLOY_ROLE_ARN, ARTIFACT_BUCKET, SSM_DOCUMENT, SSM_INSTANCE_ID, APP_URL
+on:
+  workflow_call:
+    inputs:
+      environment: {type: string, required: true}
+      release: {type: string, required: true}
+      sha256: {type: string, required: true}
+      migrate: {type: boolean, required: true}
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ vars.APP_URL }}
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-2' }}
+      RELEASE: ${{ inputs.release }}
+      SHA256: ${{ inputs.sha256 }}
+      MIGRATE: ${{ inputs.migrate }}
+      KEY: releases/${{ inputs.environment }}/${{ inputs.release }}.tar.gz
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: release
+          path: ${{ runner.temp }}/release
+
+      - name: Verify artifact checksum
+        run: echo "${SHA256}  ${RUNNER_TEMP}/release/release.tar.gz" | sha256sum --check --strict
+
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: moit-${{ inputs.environment }}-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload release to S3
+        run: |
+          aws s3 cp "${RUNNER_TEMP}/release/release.tar.gz" "s3://${{ vars.ARTIFACT_BUCKET }}/${KEY}" \
+            --only-show-errors --checksum-algorithm SHA256 \
+            --metadata "sha256=${SHA256},run-id=${GITHUB_RUN_ID}"
+
+      - name: Run deploy on server (SSM)
+        id: ssm
+        run: |
+          command_id=$(aws ssm send-command \
+            --document-name "${{ vars.SSM_DOCUMENT }}" \
+            --instance-ids "${{ vars.SSM_INSTANCE_ID }}" \
+            --comment "moit ${RELEASE:0:12} run ${GITHUB_RUN_ID}" \
+            --timeout-seconds 600 \
+            --parameters "Release=${RELEASE},Sha256=${SHA256},Migrate=${MIGRATE}" \
+            --query Command.CommandId --output text)
+          echo "command_id=${command_id}" >> "$GITHUB_OUTPUT"
+          echo "SSM command: ${command_id}"
+
+          # 기본 waiter(100초)보다 길게 최대 10분 대기한다.
+          for _ in $(seq 1 120); do
+            status=$(aws ssm get-command-invocation --command-id "${command_id}" \
+              --instance-id "${{ vars.SSM_INSTANCE_ID }}" --query Status --output text 2>/dev/null || echo Pending)
+            case "${status}" in
+              Pending|InProgress|Delayed) sleep 5 ;;
+              *) break ;;
+            esac
+          done
+          echo "status=${status}"
+
+          for step in download deploy; do
+            echo "::group::${step} output"
+            aws ssm get-command-invocation --command-id "${command_id}" \
+              --instance-id "${{ vars.SSM_INSTANCE_ID }}" --plugin-name "${step}" \
+              --query '[StandardOutputContent, StandardErrorContent]' --output text || true
+            echo "::endgroup::"
+          done
+          test "${status}" = Success
+
+      - name: External health check
+        if: vars.APP_URL != ''
+        run: |
+          for _ in $(seq 1 12); do
+            if curl --fail --silent --show-error --max-time 5 "${{ vars.APP_URL }}/api/v1/configuration" > /dev/null; then
+              echo "healthy: ${{ vars.APP_URL }}"; exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::health check failed for ${{ vars.APP_URL }}"; exit 1
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### ${{ inputs.environment }} 배포"
+            echo "- release: \`${RELEASE}\`"
+            echo "- migrate: ${MIGRATE}"
+            echo "- ssm command: \`${{ steps.ssm.outputs.command_id }}\`"
+            echo "- result: ${{ job.status }}"
+          } >> "$GITHUB_STEP_SUMMARY"

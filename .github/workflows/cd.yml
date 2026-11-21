@@ -1,0 +1,80 @@
+name: CD
+
+# main의 CI 성공 → staging 자동 배포(STAGING_ENABLED=true일 때만)
+# production → 수동 실행(workflow_dispatch) + GitHub Environment 승인
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 배포 대상 환경
+        type: choice
+        options: [staging, production]
+        default: staging
+      migrate:
+        description: 배포 전에 DB 마이그레이션을 적용한다
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       vars.STAGING_ENABLED == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      release: ${{ steps.meta.outputs.release }}
+      sha256: ${{ steps.pack.outputs.sha256 }}
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+      - id: meta
+        run: echo "release=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      # 운영 서버의 마이그레이션·보존 작업이 tsx로 실행되므로 devDependencies까지 포함한다.
+      - run: npm ci
+      - run: npm run build
+      - id: pack
+        run: |
+          echo "${{ steps.meta.outputs.release }}" > RELEASE
+          tar --create --gzip --file "${RUNNER_TEMP}/release.tar.gz" \
+            --exclude=./.git --exclude=./.github --exclude=./docs \
+            --exclude=./frontend/.next/cache --exclude='./frontend/.env*' \
+            --exclude=./frontend/tests --exclude=./backend/tests --exclude=./backend/bruno \
+            .
+          echo "sha256=$(sha256sum "${RUNNER_TEMP}/release.tar.gz" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          du -h "${RUNNER_TEMP}/release.tar.gz"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release
+          path: ${{ runner.temp }}/release.tar.gz
+          retention-days: 7
+          if-no-files-found: error
+
+  deploy:
+    needs: package
+    uses: ./.github/workflows/deploy.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      environment: ${{ inputs.environment || 'staging' }}
+      release: ${{ needs.package.outputs.release }}
+      sha256: ${{ needs.package.outputs.sha256 }}
+      migrate: ${{ github.event_name != 'workflow_dispatch' || inputs.migrate }}

@@ -1,0 +1,189 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Moit CD — GitHub OIDC 배포 역할, 릴리스 S3 버킷, SSM 하이브리드 노드 역할, 제한된 배포 SSM 문서.
+  환경(staging/production)마다 스택을 하나씩 만든다.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    AllowedValues: [staging, production]
+  GitHubRepository:
+    Type: String
+    Default: capstone-30/gd-moit
+    Description: owner/name
+  CreateOidcProvider:
+    Type: String
+    AllowedValues: ['true', 'false']
+    Default: 'true'
+    Description: 계정에 token.actions.githubusercontent.com 공급자가 이미 있으면 false
+  ArtifactRetentionDays:
+    Type: Number
+    Default: 30
+    MinValue: 1
+
+Conditions:
+  CreateOidc: !Equals [!Ref CreateOidcProvider, 'true']
+
+Resources:
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateOidc
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub moit-${EnvironmentName}-releases-${AWS::AccountId}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: {SSEAlgorithm: AES256}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules: [{ObjectOwnership: BucketOwnerEnforced}]
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-releases
+            Status: Enabled
+            Prefix: releases/
+            ExpirationInDays: !Ref ArtifactRetentionDays
+
+  ArtifactBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ArtifactBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource: [!GetAtt ArtifactBucket.Arn, !Sub '${ArtifactBucket.Arn}/*']
+            Condition: {Bool: {'aws:SecureTransport': 'false'}}
+
+  # GitHub Actions가 assume하는 역할: 릴리스 업로드 + 배포 문서 실행만 허용
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub moit-${EnvironmentName}-github-deploy
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If
+                - CreateOidc
+                - !Ref GitHubOidcProvider
+                - !Sub arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubRepository}:environment:${EnvironmentName}
+      Policies:
+        - PolicyName: deploy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: UploadRelease
+                Effect: Allow
+                Action: s3:PutObject
+                Resource: !Sub '${ArtifactBucket.Arn}/releases/${EnvironmentName}/*'
+              - Sid: RunDeployDocumentOnly
+                Effect: Allow
+                Action: ssm:SendCommand
+                Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:document/${DeployDocument}
+              - Sid: OnTaggedNodesOnly
+                Effect: Allow
+                Action: ssm:SendCommand
+                Resource:
+                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:managed-instance/*
+                  - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+                Condition:
+                  StringEquals:
+                    ssm:resourceTag/moit-environment: !Ref EnvironmentName
+              - Sid: ReadCommandResult
+                Effect: Allow
+                Action: [ssm:GetCommandInvocation, ssm:ListCommandInvocations]
+                Resource: '*'
+
+  # Lightsail 인스턴스를 SSM 하이브리드 노드로 등록할 때 쓰는 서비스 역할
+  NodeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub moit-${EnvironmentName}-ssm-node
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: ssm.amazonaws.com}
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals: {'aws:SourceAccount': !Ref 'AWS::AccountId'}
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: read-releases
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub '${ArtifactBucket.Arn}/releases/${EnvironmentName}/*'
+
+  # 임의 셸 대신 이 문서만 실행되도록 입력값을 패턴으로 제한한다.
+  DeployDocument:
+    Type: AWS::SSM::Document
+    Properties:
+      Name: !Sub moit-deploy-${EnvironmentName}
+      DocumentType: Command
+      UpdateMethod: NewVersion
+      Content:
+        schemaVersion: '2.2'
+        description: Download a Moit release from S3 and switch /opt/moit/current.
+        parameters:
+          Release:
+            type: String
+            allowedPattern: '^[0-9a-f]{40}$'
+          Sha256:
+            type: String
+            allowedPattern: '^[0-9a-f]{64}$'
+          Migrate:
+            type: String
+            allowedValues: ['true', 'false']
+            default: 'true'
+        mainSteps:
+          - action: aws:downloadContent
+            name: download
+            inputs:
+              sourceType: S3
+              sourceInfo: !Sub '{"path":"https://s3.${AWS::Region}.amazonaws.com/${ArtifactBucket}/releases/${EnvironmentName}/{{ Release }}.tar.gz"}'
+              destinationPath: '/var/lib/moit-deploy/incoming/{{ Release }}'
+          - action: aws:runShellScript
+            name: deploy
+            inputs:
+              timeoutSeconds: '540'
+              runCommand:
+                - '/opt/moit/bin/deploy.sh "{{ Release }}" "{{ Sha256 }}" "{{ Migrate }}"'
+
+Outputs:
+  DeployRoleArn:
+    Description: GitHub Environment 변수 AWS_DEPLOY_ROLE_ARN
+    Value: !GetAtt DeployRole.Arn
+  ArtifactBucketName:
+    Description: GitHub Environment 변수 ARTIFACT_BUCKET
+    Value: !Ref ArtifactBucket
+  DeployDocumentName:
+    Description: GitHub Environment 변수 SSM_DOCUMENT
+    Value: !Ref DeployDocument
+  NodeRoleName:
+    Description: aws ssm create-activation --iam-role 값
+    Value: !Ref NodeRole
