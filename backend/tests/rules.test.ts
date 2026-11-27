@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import {intersection,shouldReset} from '../application/meetings';
 import {normalizeEmail} from '../application/auth';
 import * as input from '../adapters/http/input';
-import {preauth,validPreauth,csrfFor} from '../adapters/security';
+import {preauth,validPreauth,csrfFor,hash} from '../adapters/security';
 import {page,cursor,paginate} from '../adapters/http/pagination';
 import {handle} from '../composition';
 import {createHandler} from '../adapters/http/api';
+import type {DB} from '../application/ports';
 process.env.AUTH_SECRET='test-secret-that-is-longer-than-thirty-two-characters';
 test('교집합·제안 취소·확정 인원과 시간 변경 재검증',()=>{
   assert.deepEqual(intersection([[101,102],[102,201]]),[102]);
@@ -130,4 +131,29 @@ test('HEAD는 성공·오류 본문을 제거하고 OPTIONS는 경로별 메서�
   const protectedHandler=createHandler({transaction:async run=>run({} as never),sendOtp:async()=>{},deliverDeletions:async()=>0});
   const denied=await protectedHandler(new Request('http://localhost/api/v1/me',{method:'HEAD'}));
   assert.equal(denied.status,401);assert.equal(await denied.text(),'');
+});
+
+test('세션이 끝난 쿠키로도 화면과 같은 흐름(CSRF 발급 → 로그아웃)으로 로그아웃하고 쿠키를 지운다',async()=>{
+  const previousOrigin=process.env.APP_ORIGIN,origin='http://localhost:3000';
+  process.env.APP_ORIGIN=origin;
+  try {
+    const removed:unknown[]=[];
+    for(const [raw,session] of [['valid-session',{id:'user',role:'student'}],['ended-session',undefined]] as const) {
+      const db={runtime:{security:{hash}},auth:{
+        findSession:async(values:unknown[])=>({rows:session&&values[0]===hash(raw)?[session]:[],rowCount:session?1:0}),
+        removeSession:async(values:unknown[])=>{removed.push(values[0]);return {rows:[],rowCount:0};},
+      }} as unknown as DB;
+      const handler=createHandler({transaction:async run=>run(db),sendOtp:async()=>{},deliverDeletions:async()=>0});
+      const issued=await handler(new Request(`${origin}/api/v1/auth/csrf`,{headers:{cookie:`moit_session=${raw}`}}));
+      const {csrfToken}=await issued.json(),preauthCookie=issued.headers.get('set-cookie')?.match(/moit_preauth=[^;]+/)?.[0];
+      assert.equal(Boolean(preauthCookie),!session);
+      const response=await handler(new Request(`${origin}/api/v1/auth/sessions/current`,{method:'DELETE',headers:{
+        cookie:[`moit_session=${raw}`,preauthCookie].filter(Boolean).join('; '),origin,'x-csrf-token':csrfToken}}));
+      assert.equal(response.status,204,raw);
+      assert.match(response.headers.get('set-cookie')??'',/moit_session=; .*Max-Age=0/);
+    }
+    assert.deepEqual(removed,[hash('valid-session'),hash('ended-session')]);
+  } finally {
+    if(previousOrigin===undefined)delete process.env.APP_ORIGIN;else process.env.APP_ORIGIN=previousOrigin;
+  }
 });
