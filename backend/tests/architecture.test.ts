@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readdir,readFile} from 'node:fs/promises';
-import {resolve,dirname,relative} from 'node:path';
+import {resolve,dirname,relative,sep} from 'node:path';
 import ts from 'typescript';
 import {sendOtp,deliverDeletions} from '../application/delivery';
 import {changeAccountRole} from '../application/operations';
@@ -54,7 +54,8 @@ test('domain/application은 외부 런타임·어댑터·SQL에 의존하지 않
           assert.ok(ts.isStringLiteral(node.moduleSpecifier));
           const specifier=node.moduleSpecifier.text;
           assert.ok(specifier.startsWith('.'),`${file}: external dependency ${specifier}`);
-          const target=relative(root,resolve(dirname(file),specifier));
+          // 허용 접두어는 '/' 기준이므로 Windows 경로 구분자도 '/'로 맞춘다(macOS·Linux에서는 변화 없음).
+          const target=relative(root,resolve(dirname(file),specifier)).split(sep).join('/');
           assert.ok(allowed.some(prefix=>target.startsWith(prefix)),`${file}: forbidden dependency ${target}`);
         }
         if(ts.isCallExpression(node)) {
