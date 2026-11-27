@@ -25,7 +25,8 @@ async function execute(db:DB,request:Request,route:ReturnType<typeof selectRoute
   const isPublic=route.options.public;
   if(!isPublic) requireThat(actor,401,'UNAUTHENTICATED');
   if(!isPublic && !pattern.startsWith('hosted-') && !(pattern==='me' && ['GET','DELETE'].includes(method))) requireThat(actor?.role==='student',403,'FORBIDDEN');
-  if(method!=='GET') checkCsrf(request,raw,Boolean(actor) || pattern==='auth/sessions/current' && Boolean(raw));
+  // /auth/csrf와 같은 기준으로 검증한다. 유효 세션이 없으면(만료·폐기된 쿠키로 로그아웃할 때 포함) 사전 인증 토큰을 쓴다.
+  if(method!=='GET') checkCsrf(request,raw,Boolean(actor));
   const paginated=method==='GET'&&route.options.paginated;
   const filters=route.options.filters??[];
   queryOnly(q,paginated?[...filters,'cursor','limit']:[]);
